@@ -37,8 +37,10 @@ jobs:
 
       - name: 打包工具包
         run: |
+          find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
           zip -r "bili-noads-toolkit-${GITHUB_REF_NAME}.zip" \
-            README.md LICENSE patches src scripts test docs tools
+            README.md LICENSE patches src scripts test docs tools \
+            -x "*.pyc" "*/__pycache__/*"
 
       - name: 创建 Release
         env:
