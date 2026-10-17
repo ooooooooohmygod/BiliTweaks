@@ -1,5 +1,9 @@
-本目录中的 jar 来自 Android tools 开源项目（BSD-3-Clause）：
-  - smali 2.5.2    https://repo1.maven.org/maven2/com/android/tools/smali/smali/2.5.2/
-  - baksmali 2.5.2 https://repo1.maven.org/maven2/com/android/tools/smali/baksmali/2.5.2/
+推荐安装（Debian / Ubuntu 及衍生版）:
+  sudo apt install libsmali-java
 
-build.py / selftest.py 会在 PATH 找不到同名命令时自动使用本目录的 jar。
+其他系统可下载官方 fat jar 放入本目录（构建脚本会自动使用）:
+  curl -LO https://bitbucket.org/JesusFreke/smali/downloads/smali-2.5.2.jar
+  curl -LO https://bitbucket.org/JesusFreke/smali/downloads/baksmali-2.5.2.jar
+
+备注：Maven Central 上的 org.smali:smali 是库 jar（无 Main-Class），不能独立运行，
+请使用上面的官方 fat jar。smali / baksmali 为 BSD-3-Clause 许可的开源项目。

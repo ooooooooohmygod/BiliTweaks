@@ -22,11 +22,12 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 下载 smali / baksmali 2.5.2
+      - name: 安装 smali / baksmali（Ubuntu 官方源）
         run: |
-          mkdir -p tools
-          curl -fsSL -o tools/smali.jar https://repo1.maven.org/maven2/com/android/tools/smali/smali/2.5.2/smali-2.5.2.jar
-          curl -fsSL -o tools/baksmali.jar https://repo1.maven.org/maven2/com/android/tools/smali/baksmali/2.5.2/baksmali-2.5.2.jar
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libsmali-java
+          command -v smali baksmali
+          baksmali --version
 
       - name: Python 语法检查
         run: python3 -m py_compile src/patcher.py src/build.py test/selftest.py test/check_rules.py
@@ -35,9 +36,6 @@ jobs:
         run: python3 test/check_rules.py
 
       - name: 全链路自测（smali -> baksmali -> 补丁 -> 回编 -> 回读）
-        env:
-          SMALI: java -jar tools/smali.jar
-          BAKSMALI: java -jar tools/baksmali.jar
         run: python3 test/selftest.py
 
       - name: Shell 语法检查

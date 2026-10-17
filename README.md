@@ -36,8 +36,9 @@
 - Python 3.8+
 - Java 17+（baksmali / smali 需要）
 - `zipalign`、`apksigner`（Android SDK build-tools，或系统包；Debian/Ubuntu 可直接 `apt install apksigner zipalign`）
-- `smali`、`baksmali`：优先使用 PATH 中的同名命令；没有时自动使用 `tools/*.jar`
-  （工具包 Release 已附带 jar；自行 clone 的话见 `tools/README.txt` 的下载命令）
+- `smali`、`baksmali`：
+  - Debian / Ubuntu：`sudo apt install libsmali-java`
+  - 其他系统：把官方 fat jar 放入 `tools/`（下载命令见 `tools/README.txt`），构建脚本会自动使用
 
 ### 2. 构建
 
