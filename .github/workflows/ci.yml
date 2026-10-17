@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  selftest:
+    name: 补丁链路自测
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 下载 smali / baksmali 2.5.2
+        run: |
+          mkdir -p tools
+          curl -fsSL -o tools/smali.jar https://repo1.maven.org/maven2/com/android/tools/smali/smali/2.5.2/smali-2.5.2.jar
+          curl -fsSL -o tools/baksmali.jar https://repo1.maven.org/maven2/com/android/tools/smali/baksmali/2.5.2/baksmali-2.5.2.jar
+
+      - name: Python 语法检查
+        run: python3 -m py_compile src/patcher.py src/build.py test/selftest.py test/check_rules.py
+
+      - name: 补丁规则校验
+        run: python3 test/check_rules.py
+
+      - name: 全链路自测（smali -> baksmali -> 补丁 -> 回编 -> 回读）
+        env:
+          SMALI: java -jar tools/smali.jar
+          BAKSMALI: java -jar tools/baksmali.jar
+        run: python3 test/selftest.py
+
+      - name: Shell 语法检查
+        run: bash -n scripts/build.sh
+
+      - name: 构建脚本可用性
+        run: python3 src/build.py --help > /dev/null

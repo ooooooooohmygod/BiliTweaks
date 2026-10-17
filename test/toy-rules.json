@@ -1,0 +1,23 @@
+{
+  "name": "bili-noads-selftest",
+  "description": "toy 样本规则（仅供 CI 自测，不指向真实应用）",
+  "target": {"package": "test.toy", "versionName": "0.0.1"},
+  "patches": [
+    {
+      "id": "toy-flag",
+      "dex": "toy.dex",
+      "class": "Ltest/ToyFlag;",
+      "method": "enabled()Z",
+      "op": "force_false",
+      "expect_changes": 1
+    },
+    {
+      "id": "toy-splash",
+      "dex": "toy.dex",
+      "class": "Ltest/ToySplash;",
+      "method": "current()Ljava/lang/String;",
+      "op": "null_returns",
+      "expect_changes": 2
+    }
+  ]
+}

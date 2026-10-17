@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.apk
+*.idsig
+*.work/
+.tools/
+tools/*.jar
