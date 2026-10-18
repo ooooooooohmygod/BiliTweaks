@@ -1,0 +1,64 @@
+import java.util.Properties
+
+plugins { id "com.android.application" }
+
+def signingPropertiesFile = rootProject.file("signing-private/signing.properties")
+def signingProperties = new Properties()
+if (signingPropertiesFile.isFile()) {
+    signingPropertiesFile.withInputStream { signingProperties.load(it) }
+}
+
+android {
+    namespace "io.github.ooooooooohmygod.bilinoads"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "io.github.ooooooooohmygod.bilinoads"
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    signingConfigs {
+        release {
+            if (signingPropertiesFile.isFile()) {
+                storeFile rootProject.file(signingProperties.getProperty("storeFile"))
+                storePassword signingProperties.getProperty("storePassword")
+                keyAlias signingProperties.getProperty("keyAlias")
+                keyPassword signingProperties.getProperty("keyPassword")
+                storeType "PKCS12"
+            }
+        }
+    }
+
+    buildTypes {
+        debug { minifyEnabled false }
+        release {
+            minifyEnabled false
+            shrinkResources false
+            signingConfig signingPropertiesFile.isFile() ? signingConfigs.release : null
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    applicationVariants.configureEach { variant ->
+        variant.outputs.configureEach { output ->
+            outputFileName = "bili-noads_1.0.0.apk"
+        }
+    }
+
+    packaging {
+        resources {
+            merges += "META-INF/xposed/*"
+        }
+    }
+}
+
+dependencies {
+    compileOnly "io.github.libxposed:api:102.0.0"
+}

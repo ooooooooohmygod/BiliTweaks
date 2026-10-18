@@ -1,0 +1,58 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: 安装 Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: 准备签名材料
+        env:
+          SIGNING_PROPERTIES: ${{ secrets.SIGNING_PROPERTIES }}
+          SIGNING_KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$SIGNING_PROPERTIES" ] && [ -n "$SIGNING_KEYSTORE_B64" ]; then
+            mkdir -p signing-private
+            printf '%s\n' "$SIGNING_PROPERTIES" > signing-private/signing.properties
+            printf '%s' "$SIGNING_KEYSTORE_B64" | base64 -d > signing-private/bilinoads.p12
+            echo "签名材料已就绪"
+          else
+            echo "未配置签名 Secret，产物将未签名"
+          fi
+
+      - name: 构建 Release APK
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: bili-noads-release-apk
+          path: app/build/outputs/apk/release/*.apk
+
+      - name: 发布 Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" app/build/outputs/apk/release/*.apk \
+            --title "bili-noads $GITHUB_REF_NAME" --generate-notes

@@ -1,7 +1,20 @@
-__pycache__/
-*.pyc
+# Gradle / Android
+.gradle/
+**/build/
+.idea/
+*.iml
+local.properties
+.externalNativeBuild/
+**/.cxx/
+
+# 本地签名材料（CI 从仓库 Secrets 取）
+signing-private/
+
+# 本地产物
 *.apk
-*.idsig
-*.work/
-.tools/
-tools/*.jar
+*.aab
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
