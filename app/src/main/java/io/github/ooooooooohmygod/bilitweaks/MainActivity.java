@@ -95,8 +95,7 @@ public final class MainActivity extends AppCompatActivity {
         MaterialAutoCompleteTextView view = findViewById(viewId);
         String[] labels = getResources().getStringArray(R.array.quality_options);
         view.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, labels));
-        int current = getSharedPreferences(Prefs.NAME, MODE_PRIVATE)
-                .getInt(key, Prefs.DEFAULT_QUALITY);
+        int current = getSharedPreferences(Prefs.NAME, MODE_PRIVATE).getInt(key, 0);
         int index = 0;
         for (int i = 0; i < QUALITY_VALUES.length; i++) {
             if (QUALITY_VALUES[i] == current) {

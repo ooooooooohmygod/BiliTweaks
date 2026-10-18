@@ -85,12 +85,12 @@ final class HookRuntime {
         }
     }
 
-    /** 读取整型偏好，未设置时默认 1080P；0 表示不覆盖原值。 */
+    /** 读取整型偏好，0 表示不覆盖原值。 */
     static int getIntPreference(String key) {
         XposedModule value = module;
         if (value == null) return 0;
         try {
-            return value.getRemotePreferences(Prefs.NAME).getInt(key, Prefs.DEFAULT_QUALITY);
+            return value.getRemotePreferences(Prefs.NAME).getInt(key, 0);
         } catch (Throwable t) {
             log("读取清晰度偏好失败：" + key, t);
             return 0;

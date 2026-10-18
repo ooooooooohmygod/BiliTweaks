@@ -1,5 +1,6 @@
 package io.github.ooooooooohmygod.bilitweaks;
 
+import android.content.Context;
 import android.content.res.Configuration;
 
 import java.lang.reflect.Method;
@@ -15,10 +16,12 @@ final class PlayerQuality {
         int fullscreen = HookRuntime.getIntPreference(Prefs.KEY_FULLSCREEN_QUALITY);
         if (inline <= 0 && fullscreen <= 0) return 0;
 
-        boolean isFullscreen = isFullscreen(handler);
+        int orientation = screenOrientation(handler);
+        boolean isFullscreen = orientation == Configuration.ORIENTATION_LANDSCAPE;
         int qn = isFullscreen ? fullscreen : inline;
         if (qn > 0) {
-            String message = "强制清晰度 qn=" + qn + " fullscreen=" + isFullscreen;
+            String message = "强制清晰度 qn=" + qn + " fullscreen=" + isFullscreen
+                    + " orientation=" + orientation;
             if (!message.equals(lastLogged)) {
                 lastLogged = message;
                 HookRuntime.log(message);
@@ -27,17 +30,16 @@ final class PlayerQuality {
         return qn;
     }
 
-    private static boolean isFullscreen(Object handler) {
+    /** 读取当前屏幕方向（Configuration.ORIENTATION_*），失败返回 -1。 */
+    private static int screenOrientation(Object handler) {
         try {
             Object container = invoke(handler, "getMPlayerContainer");
-            if (container == null) return false;
-            Object state = invoke(container, "getActivityStateService");
-            if (state == null) return false;
-            Object orientation = invoke(state, "getOrientation");
-            return orientation instanceof Integer
-                    && (Integer) orientation == Configuration.ORIENTATION_LANDSCAPE;
+            if (container == null) return -1;
+            Object context = invoke(container, "getContext");
+            if (!(context instanceof Context)) return -1;
+            return ((Context) context).getResources().getConfiguration().orientation;
         } catch (Throwable ignored) {
-            return false;
+            return -1;
         }
     }
 

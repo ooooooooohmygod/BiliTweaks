@@ -10,7 +10,5 @@ final class Prefs {
     static final String KEY_FULLSCREEN_QUALITY = "fullscreen_quality";
     static final String KEY_UPDATE = "update";
 
-    static final int DEFAULT_QUALITY = 80;
-
     private Prefs() {}
 }
