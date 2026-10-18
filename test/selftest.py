@@ -4,7 +4,7 @@
 
 用自带 toy 类走完整链路验证 patcher 正确性：
   smali 回编 -> baksmali 反汇编 -> patcher 打补丁 -> 断言 -> smali 回编 -> 回读断言
-外加两条负路径（方法不存在 / 改动数不符）。
+外加三条负路径（方法不存在 / 改动数不符 / 操作与返回类型不匹配）。
 
 用法:
   python3 test/selftest.py
@@ -76,16 +76,21 @@ def main():
     run([*baksmali, 'd', tmp / 'toy.dex', '-o', smali_root / 'toy.dex'])
     flag_file = smali_root / 'toy.dex' / 'test' / 'ToyFlag.smali'
     splash_file = smali_root / 'toy.dex' / 'test' / 'ToySplash.smali'
-    check(flag_file.is_file() and splash_file.is_file(), '反汇编输出缺少 toy 类')
+    update_file = smali_root / 'toy.dex' / 'test' / 'ToyUpdate.smali'
+    check(flag_file.is_file() and splash_file.is_file() and update_file.is_file(),
+          '反汇编输出缺少 toy 类')
 
     flag_orig = flag_file.read_text(encoding='utf-8')
     splash_orig = splash_file.read_text(encoding='utf-8')
+    update_orig = update_file.read_text(encoding='utf-8')
 
     # 3. 打补丁
     rules = load_rules(ROOT / 'test' / 'toy-rules.json')
     report = {r['id']: r['changes'] for r in apply_rules(rules, smali_root)}
     check(report.get('toy-flag') == 1, f'toy-flag 改动数异常: {report}')
     check(report.get('toy-splash') == 2, f'toy-splash 改动数异常: {report}')
+    check(report.get('toy-void') == 1, f'toy-void 改动数异常: {report}')
+    check(report.get('toy-null') == 1, f'toy-null 改动数异常: {report}')
 
     # 4. 文本断言
     flag = flag_file.read_text(encoding='utf-8')
@@ -96,20 +101,32 @@ def main():
     n = len(re.findall(r'const/4 v0, 0x0\s*\n\s*return-object v0', splash))
     check(n == 2, f'null_returns 插入数量异常: {n}')
 
+    update = update_file.read_text(encoding='utf-8')
+    check('sget-object' not in update, 'force_void/force_null 未清空方法体')
+    check(len(re.findall(r'return-void', update)) == 1, 'force_void 未生效')
+    n = len(re.findall(r'const/4 v0, 0x0\s*\n\s*return-object v0', update))
+    check(n == 1, f'force_null 插入数量异常: {n}')
+
     # 5. 回编 + 回读断言
     run([*smali, 'a', smali_root / 'toy.dex', '-o', tmp / 'toy-patched.dex'])
     back_root = tmp / 'back'
     run([*baksmali, 'd', tmp / 'toy-patched.dex', '-o', back_root])
     flag_back = (back_root / 'test' / 'ToyFlag.smali').read_text(encoding='utf-8')
     splash_back = (back_root / 'test' / 'ToySplash.smali').read_text(encoding='utf-8')
+    update_back = (back_root / 'test' / 'ToyUpdate.smali').read_text(encoding='utf-8')
     check('return v0' in flag_back and 'const/4 v0, 0x1' not in flag_back,
           '回读: force_false 不符预期')
     n = len(re.findall(r'const/4 v0, 0x0\s*\n\s*return-object v0', splash_back))
     check(n == 2, f'回读: null_returns 数量异常: {n}')
+    check('sget-object' not in update_back and 'return-void' in update_back,
+          '回读: force_void 不符预期')
+    n = len(re.findall(r'const/4 v0, 0x0\s*\n\s*return-object v0', update_back))
+    check(n == 1, f'回读: force_null 数量异常: {n}')
 
     # 6. 负路径（先还原到未打补丁状态再做校验类测试）
     flag_file.write_text(flag_orig, encoding='utf-8')
     splash_file.write_text(splash_orig, encoding='utf-8')
+    update_file.write_text(update_orig, encoding='utf-8')
 
     bad_sig = {'patches': [{'id': 'bad', 'dex': 'toy.dex', 'class': 'Ltest/ToyFlag;',
                             'method': 'enabled(I)Z', 'op': 'force_false'}]}
@@ -120,7 +137,12 @@ def main():
                                'expect_changes': 3}]}
     expect_patch_error(lambda: apply_rules(bad_expect, smali_root), '改动数不符')
 
-    print('[selftest] OK：全链路通过（含 2 条负路径）')
+    bad_ret_type = {'patches': [{'id': 'bad3', 'dex': 'toy.dex', 'class': 'Ltest/ToyFlag;',
+                                 'method': 'enabled()Z', 'op': 'force_void',
+                                 'expect_changes': 1}]}
+    expect_patch_error(lambda: apply_rules(bad_ret_type, smali_root), '操作与返回类型不匹配')
+
+    print('[selftest] OK：全链路通过（含 3 条负路径）')
 
 
 if __name__ == '__main__':

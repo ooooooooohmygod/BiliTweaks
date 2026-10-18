@@ -6,6 +6,8 @@
 
 支持的操作（见规则文件 ops 字段）:
   force_false   把方法体替换为 const/4 v0, 0x0 + return v0（布尔方法恒 false）
+  force_void    把方法体替换为 return-void（void 方法整体禁用，副作用一并跳过）
+  force_null    把方法体替换为 const/4 v0, 0x0 + return-object v0（引用方法恒 null）
   null_returns  在该方法的每个 return-object vX 前插入 const/4 vX, 0x0
                 （引用返回值恒 null，保留原有副作用）
 
@@ -92,8 +94,34 @@ def op_force_false(block):
     return '\n'.join(new_lines), 1
 
 
+def op_force_void(block):
+    """把方法体替换为 return-void（保留 .registers/.locals）。"""
+    lines = block.split('\n')
+    head, tail = lines[0], lines[-1]
+    if not head.split()[-1].rstrip().endswith(')V'):
+        return block, 0  # 只适用于返回 void 的方法
+    keep = [ln for ln in lines[1:-1] if ln.strip().startswith(('.registers', '.locals'))]
+    new_lines = [head] + keep + ['', '    return-void', tail]
+    return '\n'.join(new_lines), 1
+
+
+def op_force_null(block):
+    """把方法体替换为 const/4 v0, 0x0 + return-object v0（保留 .registers/.locals）。"""
+    lines = block.split('\n')
+    head, tail = lines[0], lines[-1]
+    sig = head.split()[-1].rstrip()
+    ret = sig.rsplit(')', 1)[-1] if ')' in sig else ''
+    if not (ret.startswith('L') or ret.startswith('[')):
+        return block, 0  # 只适用于返回引用类型的方法
+    keep = [ln for ln in lines[1:-1] if ln.strip().startswith(('.registers', '.locals'))]
+    new_lines = [head] + keep + ['', '    const/4 v0, 0x0', '', '    return-object v0', tail]
+    return '\n'.join(new_lines), 1
+
+
 OPS = {
     'force_false': op_force_false,
+    'force_void': op_force_void,
+    'force_null': op_force_null,
     'null_returns': op_null_returns,
 }
 

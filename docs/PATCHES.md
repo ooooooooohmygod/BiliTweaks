@@ -8,11 +8,16 @@
 - 只让关键判断返回「没有广告可展示」，让 App 自己走正常分支
 - 相比「删除调用」或「清空方法体」，能最大程度避免空指针、状态卡死等副作用
 
-## 支持的两种操作
+> 例外：去更新检测一组（第 7-10 节）没有「是否展示广告」这类安全返回值可用，采用整体禁用
+> （`force_void` / `force_null`），直接跳过检查与弹窗链路；代价是「检查更新」入口点击后无反应。
+
+## 支持的四种操作
 
 | op | 行为 | 适用场景 |
 |---|---|---|
 | `force_false` | 方法体替换为 `const/4 v0, 0x0` + `return v0` | 布尔开关类方法 |
+| `force_void` | 方法体替换为 `return-void` | 无返回值、纯执行动作的方法 |
+| `force_null` | 方法体替换为 `const/4 v0, 0x0` + `return-object v0` | 返回对象、且需连同副作用跳过的方法 |
 | `null_returns` | 每个 `return-object vX` 前插入 `const/4 vX, 0x0` | 返回对象的工厂 / 内容方法 |
 
 ## 各补丁说明
@@ -46,11 +51,32 @@
 `SplashManager.a(SplashOrder)` 是**所有** `BaseSplash` 子类页面（含 `HotSplashActivity`）的唯一创建入口。
 返回 null 后：即使还有其它路径取出订单，页面也无法被实例化，入口 Activity 会立即退出。
 
+### 7. update-check-startup — 启动检查总入口
+
+`UpdateHelper.checkUpdateInStartup(Activity, IUpdater)` 是冷启动 / 回前台场景下静默检查（含「本地缓存强制更新」链路）的唯一入口。
+整体禁用后：启动流程不再请求版本接口、不再读取本地更新包记录，也不会有任何强制更新弹窗。
+
+### 8. update-check-manual — 手动检查 / 兼容性升级总入口
+
+`UpdateHelper.checkUpdateAndShowDialog(Context, IUpdater)` 覆盖设置页「检查更新」与兼容性升级两个场景。
+整体禁用后不再请求版本接口。副作用：设置里的「检查更新」入口点击后没有反应。
+
+### 9. update-cached-force — 缓存的强制更新读取
+
+`qs1.g.call()` 在后台读取本地已下载更新包记录（`UpdateApk.getExistingForceUpdate`），是「已缓存强制更新」弹窗的唯一数据来源。
+恒 null 后，调用方（`y30.k`）拿到空结果直接跳过：不弹窗、不安装。
+
+### 10. update-install-prompt — 已下载更新包安装提示
+
+`y30.l$a.checkInstall(Context)` 在主界面启动时检查 `apk_store_info` 残留：若缓存里有比当前版本新的安装包，会弹「安装新版本」对话框。
+整体禁用后不再读取、不再提示；残留的旧安装包文件保持原样，可手动清理应用缓存。
+
 ## 已知边界
 
 - 品牌 / 活动开屏（如拜年纪）不做拦截；个别情况下可能随副作用提前退出，属于可接受结果
 - 开屏资源预加载逻辑保留（只是不再触发），无副作用
 - 信息流广告、视频贴片广告不在本工程范围
+- 去更新检测后，设置里「检查更新」点击无响应（预期行为）
 
 ## 构建后自查（建议）
 

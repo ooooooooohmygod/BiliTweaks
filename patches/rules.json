@@ -1,6 +1,6 @@
 {
   "name": "bili-noads",
-  "description": "哔哩哔哩 Android 客户端去广告补丁规则（开屏直进 + 去暂停页广告）",
+  "description": "哔哩哔哩 Android 客户端去广告补丁规则（开屏直进 + 去暂停页广告 + 去更新检测）",
   "target": {
     "package": "tv.danmaku.bili",
     "versionName": "9.15.0",
@@ -9,6 +9,8 @@
   },
   "ops": {
     "force_false": "把方法体替换为 const/4 v0, 0x0 + return v0（布尔方法恒 false）",
+    "force_void": "把方法体替换为 return-void（void 方法整体禁用，副作用一并跳过）",
+    "force_null": "把方法体替换为 const/4 v0, 0x0 + return-object v0（引用方法恒 null，副作用一并跳过）",
     "null_returns": "在该方法的每个 return-object vX 前插入 const/4 vX, 0x0（引用返回值恒 null，保留原有副作用）"
   },
   "patches": [
@@ -64,6 +66,42 @@
       "class": "Ltv/danmaku/bili/splash/ad/core/SplashManager;",
       "method": "a(Ltv/danmaku/bili/splash/ad/model/SplashOrder;)Ltv/danmaku/bili/splash/ad/page/BaseSplash;",
       "op": "null_returns",
+      "expect_changes": 1
+    },
+    {
+      "id": "update-check-startup",
+      "dex": "classes25.dex",
+      "desc": "启动静默检查总入口禁用：冷启动不再探测新版本，也不会触发强制更新弹窗",
+      "class": "Ltv/danmaku/bili/update/api/UpdateHelper;",
+      "method": "checkUpdateInStartup(Landroid/app/Activity;Ltv/danmaku/bili/update/api/updater/IUpdater;)V",
+      "op": "force_void",
+      "expect_changes": 1
+    },
+    {
+      "id": "update-check-manual",
+      "dex": "classes25.dex",
+      "desc": "手动检查 / 兼容性升级总入口禁用：设置里“检查更新”不再请求版本接口",
+      "class": "Ltv/danmaku/bili/update/api/UpdateHelper;",
+      "method": "checkUpdateAndShowDialog(Landroid/content/Context;Ltv/danmaku/bili/update/api/updater/IUpdater;)V",
+      "op": "force_void",
+      "expect_changes": 1
+    },
+    {
+      "id": "update-cached-force",
+      "dex": "classes25.dex",
+      "desc": "本地缓存的强制更新信息读取恒 null：已下载更新包不再触发强制更新弹窗",
+      "class": "Lqs1/g;",
+      "method": "call()Ljava/lang/Object;",
+      "op": "force_null",
+      "expect_changes": 1
+    },
+    {
+      "id": "update-install-prompt",
+      "dex": "classes9.dex",
+      "desc": "已下载更新包安装提示禁用：apk_store_info 残留不再弹“安装新版本”对话框",
+      "class": "Ly30/l$a;",
+      "method": "checkInstall(Landroid/content/Context;)V",
+      "op": "force_void",
       "expect_changes": 1
     }
   ]

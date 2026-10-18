@@ -18,6 +18,22 @@
       "method": "current()Ljava/lang/String;",
       "op": "null_returns",
       "expect_changes": 2
+    },
+    {
+      "id": "toy-void",
+      "dex": "toy.dex",
+      "class": "Ltest/ToyUpdate;",
+      "method": "sync()V",
+      "op": "force_void",
+      "expect_changes": 1
+    },
+    {
+      "id": "toy-null",
+      "dex": "toy.dex",
+      "class": "Ltest/ToyUpdate;",
+      "method": "cached()Ljava/lang/String;",
+      "op": "force_null",
+      "expect_changes": 1
     }
   ]
 }

@@ -1,6 +1,6 @@
 # bili-noads
 
-哔哩哔哩 Android 客户端 **9.15.0（arm64-v8a）** 去广告补丁工程。
+哔哩哔哩 Android 客户端 **9.15.0（arm64-v8a）** 去广告 + 去更新检测补丁工程。
 
 补丁以「规则 + 脚本」的形式公开：**本仓库不包含、不发布任何成品 APK**。
 请自备官方客户端，用这里的工具自行构建，供个人使用。
@@ -13,10 +13,11 @@
 | 直播热启动开屏 | 展示开屏广告 | 不展示 |
 | 暂停 / 双击暂停 | 插入暂停页广告 | 不插入 |
 | 视频结束页 | 可能展示结束页广告 | 不展示 |
+| 更新检测 | 启动 / 手动检查新版本、强制更新、安装提示 | 全部不触发 |
 
 其余功能（播放、弹幕、搜索、动态、投稿等）不做任何修改。
 
-## 补丁清单（6 个方法 / 4 个 dex）
+## 补丁清单（10 个方法 / 5 个 dex）
 
 | id | 目标方法 | 操作 | 效果 |
 |---|---|---|---|
@@ -26,6 +27,12 @@
 | `splash-tv-orders` | `MainActivitySplashComponentExtKt.a(MainActivityV2)` | 返回 null | TV 侧开屏订单全部为空 |
 | `splash-kntr-content` | `BusinessSplashViewModel.a(SplashSource)` | 返回 null | kntr 侧开屏内容为空，容器自动隐藏 |
 | `splash-pages` | `SplashManager.a(SplashOrder)` | 返回 null | 开屏页面工厂为空，入口即退 |
+| `update-check-startup` | `UpdateHelper.checkUpdateInStartup(Activity, IUpdater)` | 整体禁用 | 启动不再检测新版本、不再强制更新 |
+| `update-check-manual` | `UpdateHelper.checkUpdateAndShowDialog(Context, IUpdater)` | 整体禁用 | 手动检查与兼容性升级不请求接口 |
+| `update-cached-force` | `qs1.g.call()` | 返回 null | 本地缓存的强制更新信息不再弹窗 |
+| `update-install-prompt` | `y30.l$a.checkInstall(Context)` | 整体禁用 | 已下载更新包不再弹安装提示 |
+
+> 去更新检测一组为整体禁用：设置里的「检查更新」入口点击后不再有反应（预期效果）。
 
 原理、取舍与自查方法见 [docs/PATCHES.md](docs/PATCHES.md)。
 
