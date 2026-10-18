@@ -78,7 +78,7 @@ public final class MainActivity extends AppCompatActivity {
 
     private void bindSwitch(int viewId, String key) {
         MaterialSwitch toggle = findViewById(viewId);
-        toggle.setChecked(getSharedPreferences(Prefs.NAME, MODE_PRIVATE).getBoolean(key, false));
+        toggle.setChecked(getSharedPreferences(Prefs.NAME, MODE_PRIVATE).getBoolean(key, true));
         toggle.setOnCheckedChangeListener((buttonView, isChecked) ->
                 getSharedPreferences(Prefs.NAME, MODE_PRIVATE).edit()
                         .putBoolean(key, isChecked)
