@@ -167,11 +167,14 @@ public final class MainHook extends XposedModule {
                 enabled(Prefs.KEY_SPLASH_AD),
                 null));
 
-        // 13. 品牌开屏壁纸时长置 0，避免显示完壁纸才进主界面
-        installed += install(missing, "品牌开屏时长", () -> HookRuntime.hookReturnConstant(
-                method(classLoader, "tv.danmaku.bili.ui.splash.brand.model.BrandShowInfo", "getDuration"),
+        // 13. 开屏列表网络请求：直接返回 null，使用本地列表/品牌壁纸，避免壁纸前长时间等待
+        installed += install(missing, "开屏列表请求", () -> HookRuntime.hookReturnConstant(
+                method(classLoader, "kntr.srcs.app.splash.services.d", "a",
+                        clazz(classLoader, "kntr.srcs.app.splash.core.model.OpenEvent"),
+                        String.class, String.class, String.class,
+                        clazz(classLoader, "kotlin.coroutines.jvm.internal.ContinuationImpl")),
                 enabled(Prefs.KEY_SPLASH_AD),
-                0L));
+                null));
 
         String summary = "hook 安装完成：" + installed + "/13";
         if (!missing.isEmpty()) {
