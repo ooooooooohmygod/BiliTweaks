@@ -1,10 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">bili-noads</string>
-    <string name="module_description">哔哩哔哩 9.15.0（9150300）去广告（开屏 / 暂停页 / 结束页）、去更新检测与屏蔽 AI 相关视频</string>
-    <string name="settings_title">bili-noads</string>
-    <string name="settings_subtitle">哔哩哔哩 9.15.0 去广告模块</string>
-    <string name="settings_block_ai">屏蔽 AI 相关视频</string>
-    <string name="settings_block_ai_hint">开启后，打开带“含AI生成内容”标记的视频详情页会被拦截并返回上一页。该标记由 B 站服务端下发；列表页暂无法识别未打开的 AI 视频。</string>
-    <string name="settings_scope">支持版本：哔哩哔哩 9.15.0（versionCode 9150300）</string>
+    <string name="module_description">哔哩哔哩 9.15.0（9150300）去广告（开屏 / 暂停页 / 结束页）与去更新检测</string>
 </resources>

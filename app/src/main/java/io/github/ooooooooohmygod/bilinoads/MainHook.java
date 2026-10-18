@@ -5,7 +5,6 @@ import android.app.Application;
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.os.Build;
-import android.widget.TextView;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -31,7 +30,6 @@ public final class MainHook extends XposedModule {
     @Override
     public void onModuleLoaded(ModuleLoadedParam param) {
         HookRuntime.attach(this);
-        AiBlock.attach(this);
         mainProcess = TARGET_PACKAGE.equals(param.getProcessName());
         if (!mainProcess) {
             detach();
@@ -53,9 +51,6 @@ public final class MainHook extends XposedModule {
                 if (context == null) return;
                 if (!isTargetVersion(context)) return;
                 if (!INSTALLED.compareAndSet(false, true)) return;
-                if (context instanceof Application) {
-                    AiBlock.install((Application) context);
-                }
                 installHooks(context.getClassLoader());
             });
         } catch (Throwable t) {
@@ -137,27 +132,7 @@ public final class MainHook extends XposedModule {
                 method(classLoader, "y30.l$a", "checkInstall", Context.class),
                 null));
 
-        // 11/12/13. 屏蔽 AI 相关视频：详情页 argue 标记恒为“含AI生成内容”
-        installed += install(missing, "AI标记文案", () -> HookRuntime.hookAfterResult(
-                method(classLoader, "com.bapis.bilibili.app.view.v1.ArgueBar", "getMsg"),
-                result -> AiBlock.onText(result instanceof String ? (String) result : null)));
-        installed += install(missing, "AI标记详情", () -> HookRuntime.hookAfterResult(
-                method(classLoader, "com.bapis.bilibili.app.view.v1.ViewReply", "getArgueBar"),
-                AiBlock::inspectArgueBar));
-        installed += install(missing, "AI标记剧集", () -> HookRuntime.hookAfterResult(
-                method(classLoader, "com.bapis.bilibili.app.view.v1.ActivitySeason", "getArgueBar"),
-                AiBlock::inspectArgueBar));
-        // 兜底：详情页若用原生 TextView 展示该标记，也能在 UI 线程精确命中
-        installed += install(missing, "AI标记文本", () -> HookRuntime.hookAfter(
-                TextView.class.getDeclaredMethod("setText", CharSequence.class),
-                chain -> {
-                    Object text = chain.getArg(0);
-                    if (text instanceof CharSequence) {
-                        AiBlock.onText(text.toString());
-                    }
-                }));
-
-        String summary = "hook 安装完成：" + installed + "/14";
+        String summary = "hook 安装完成：" + installed + "/10";
         if (!missing.isEmpty()) {
             summary += "，未命中：" + String.join("、", missing);
         }
