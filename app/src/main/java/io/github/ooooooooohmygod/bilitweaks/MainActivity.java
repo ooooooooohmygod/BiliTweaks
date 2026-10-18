@@ -1,9 +1,8 @@
 package io.github.ooooooooohmygod.bilitweaks;
 
-import android.app.PendingIntent;
+import android.content.ClipData;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
-import android.content.pm.PackageInstaller;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -13,6 +12,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -25,9 +25,6 @@ import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
 
 public final class MainActivity extends AppCompatActivity {
     private AlertDialog progressDialog;
@@ -149,7 +146,7 @@ public final class MainActivity extends AppCompatActivity {
                     }
                     dismissProgress();
                     if (file == null) {
-                        Toast.makeText(this, R.string.download_failed, Toast.LENGTH_LONG).show();
+                        showDownloadFailure(error);
                         return;
                     }
                     PackageInfo info = getPackageManager()
@@ -205,36 +202,30 @@ public final class MainActivity extends AppCompatActivity {
 
     private void installApk(File apk) {
         try {
-            PackageInstaller installer = getPackageManager().getPackageInstaller();
-            PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(
-                    PackageInstaller.SessionParams.MODE_FULL_INSTALL);
-            int sessionId = installer.createSession(params);
-            PendingIntent pendingIntent = PendingIntent.getBroadcast(this, sessionId,
-                    new Intent(this, InstallResultReceiver.class),
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
-
+            Uri uri = FileProvider.getUriForFile(this,
+                    getPackageName() + ".fileprovider", apk);
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(uri, "application/vnd.android.package-archive");
+            intent.setClipData(ClipData.newRawUri("", uri));
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    | Intent.FLAG_ACTIVITY_NEW_TASK);
             Toast.makeText(this, R.string.installing_update, Toast.LENGTH_SHORT).show();
-            new Thread(() -> {
-                try (PackageInstaller.Session session = installer.openSession(sessionId);
-                     InputStream input = new FileInputStream(apk);
-                     OutputStream output = session.openWrite("base.apk", 0, apk.length())) {
-                    byte[] buffer = new byte[8192];
-                    int count;
-                    while ((count = input.read(buffer)) > 0) {
-                        output.write(buffer, 0, count);
-                    }
-                    session.fsync(output);
-                    session.commit(pendingIntent.getIntentSender());
-                } catch (Throwable t) {
-                    runOnUiThread(() -> Toast.makeText(this,
-                            getString(R.string.install_failed, String.valueOf(t.getMessage())),
-                            Toast.LENGTH_LONG).show());
-                }
-            }, "BiliTweaks-install").start();
+            startActivity(intent);
         } catch (Throwable t) {
-            Toast.makeText(this, getString(R.string.install_failed, String.valueOf(t.getMessage())),
-                    Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.install_failed,
+                    String.valueOf(t.getMessage())), Toast.LENGTH_LONG).show();
         }
+    }
+
+    private void showDownloadFailure(String error) {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.download_failed_title)
+                .setMessage(getString(R.string.download_failed_reason,
+                        error != null ? error : "unknown"))
+                .setPositiveButton(R.string.update_browser,
+                        (dialog, which) -> openBrowser(UpdateChecker.RELEASES_URL))
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 
     private void openBrowser(String url) {

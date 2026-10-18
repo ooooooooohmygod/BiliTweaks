@@ -5,6 +5,7 @@ import android.util.Xml;
 import org.xmlpull.v1.XmlPullParser;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,6 +16,12 @@ import java.net.URL;
 final class UpdateChecker {
     static final String FEED_URL = "https://github.com/ooooooooohmygod/BiliTweaks/releases.atom";
     static final String RELEASES_URL = "https://github.com/ooooooooohmygod/BiliTweaks/releases";
+
+    private static final String[] MIRRORS = {
+            "",
+            "https://ghproxy.net/",
+            "https://gh-proxy.com/"
+    };
 
     interface Callback {
         void onResult(String latestTag, String releaseUrl);
@@ -89,25 +96,54 @@ final class UpdateChecker {
                 + tag + "/BiliTweaks_" + version + ".apk";
     }
 
-    static void download(String url, File dest, ProgressCallback progress, DownloadCallback callback) {
+    static void download(String originalUrl, File dest, ProgressCallback progress, DownloadCallback callback) {
         Thread thread = new Thread(() -> {
-            File part = new File(dest.getParentFile(), dest.getName() + ".part");
-            HttpURLConnection connection = null;
-            try {
-                part.delete();
-                connection = (HttpURLConnection) new URL(url).openConnection();
+            String lastError = "unknown";
+            for (String mirror : MIRRORS) {
+                String url = mirror.isEmpty() ? originalUrl : mirror + originalUrl;
+                try {
+                    downloadOnce(url, dest, progress);
+                    callback.onResult(dest, null);
+                    return;
+                } catch (Throwable t) {
+                    lastError = t.getMessage() != null ? t.getMessage() : t.getClass().getSimpleName();
+                }
+            }
+            callback.onResult(null, lastError);
+        }, "BiliTweaks-download");
+        thread.start();
+    }
+
+    private static void downloadOnce(String url, File dest, ProgressCallback progress) throws IOException {
+        File part = new File(dest.getParentFile(), dest.getName() + ".part");
+        part.delete();
+        HttpURLConnection connection = null;
+        try {
+            String current = url;
+            for (int redirect = 0; redirect <= 8; redirect++) {
+                connection = (HttpURLConnection) new URL(current).openConnection();
                 connection.setConnectTimeout(15000);
                 connection.setReadTimeout(30000);
-                connection.setRequestProperty("User-Agent", "BiliTweaks");
-                connection.setInstanceFollowRedirects(true);
+                connection.setInstanceFollowRedirects(false);
+                connection.setRequestProperty("User-Agent",
+                        "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36");
+                connection.setRequestProperty("Accept", "*/*");
 
                 int code = connection.getResponseCode();
+                if (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) {
+                    String location = connection.getHeaderField("Location");
+                    connection.disconnect();
+                    connection = null;
+                    if (location == null) throw new IOException("redirect without location");
+                    current = new URL(new URL(current), location).toString();
+                    continue;
+                }
                 if (code != HttpURLConnection.HTTP_OK) {
                     throw new IOException("HTTP " + code);
                 }
+
                 long total = connection.getContentLengthLong();
                 if (progress != null) progress.onProgress(total > 0 ? 0 : -1);
-
                 try (InputStream input = connection.getInputStream();
                      FileOutputStream output = new FileOutputStream(part)) {
                     byte[] buffer = new byte[8192];
@@ -123,18 +159,27 @@ final class UpdateChecker {
                     output.flush();
                 }
 
+                if (part.length() < 100_000) {
+                    throw new IOException("file too small");
+                }
+                try (InputStream magic = new FileInputStream(part)) {
+                    byte[] head = new byte[2];
+                    if (magic.read(head) != 2 || head[0] != 'P' || head[1] != 'K') {
+                        throw new IOException("not an APK");
+                    }
+                }
+                dest.delete();
                 if (!part.renameTo(dest)) {
                     throw new IOException("rename failed");
                 }
-                callback.onResult(dest, null);
-            } catch (Throwable t) {
-                part.delete();
-                callback.onResult(null, t.getMessage() != null
-                        ? t.getMessage() : t.getClass().getSimpleName());
-            } finally {
-                if (connection != null) connection.disconnect();
+                return;
             }
-        }, "BiliTweaks-download");
-        thread.start();
+            throw new IOException("too many redirects");
+        } catch (IOException e) {
+            part.delete();
+            throw e;
+        } finally {
+            if (connection != null) connection.disconnect();
+        }
     }
 }
