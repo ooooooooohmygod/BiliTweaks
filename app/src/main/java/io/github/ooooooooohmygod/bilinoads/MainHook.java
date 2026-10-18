@@ -16,7 +16,7 @@ import io.github.libxposed.api.XposedModule;
 
 /**
  * 哔哩哔哩 9.15.0 去广告（开屏 / 暂停页 / 结束页）与去更新检测。
- * 与 bili-noads 的 10 个 smali 补丁点一一对应，改为在官方包上运行时 hook。
+ * 与 BiliTweaks 的 10 个 smali 补丁点一一对应，改为在官方包上运行时 hook。
  */
 public final class MainHook extends XposedModule {
     private static final String TARGET_PACKAGE = "tv.danmaku.bili";

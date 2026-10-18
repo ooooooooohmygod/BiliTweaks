@@ -10,7 +10,7 @@ import io.github.libxposed.api.XposedModule;
 
 /** 把回调适配到 libxposed API 102 的拦截器链。 */
 final class HookRuntime {
-    private static final String TAG = "bili-noads";
+    private static final String TAG = "BiliTweaks";
     private static volatile XposedModule module;
 
     private HookRuntime() {}

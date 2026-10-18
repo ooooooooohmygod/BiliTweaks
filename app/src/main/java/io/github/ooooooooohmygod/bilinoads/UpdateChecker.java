@@ -10,8 +10,8 @@ import java.net.URL;
 
 /** 通过 GitHub Releases 的 Atom 源检查最新版本，避免调用 API 触发限流。 */
 final class UpdateChecker {
-    static final String FEED_URL = "https://github.com/ooooooooohmygod/bili-noads/releases.atom";
-    static final String RELEASES_URL = "https://github.com/ooooooooohmygod/bili-noads/releases";
+    static final String FEED_URL = "https://github.com/ooooooooohmygod/BiliTweaks/releases.atom";
+    static final String RELEASES_URL = "https://github.com/ooooooooohmygod/BiliTweaks/releases";
 
     interface Callback {
         void onResult(String latestTag, String releaseUrl);
@@ -28,7 +28,7 @@ final class UpdateChecker {
                 connection = (HttpURLConnection) new URL(FEED_URL).openConnection();
                 connection.setConnectTimeout(8000);
                 connection.setReadTimeout(8000);
-                connection.setRequestProperty("User-Agent", "bili-noads");
+                connection.setRequestProperty("User-Agent", "BiliTweaks");
                 connection.setRequestProperty("Accept", "application/atom+xml");
 
                 try (InputStream input = connection.getInputStream()) {
@@ -62,11 +62,13 @@ final class UpdateChecker {
             if (url != null) {
                 int index = url.lastIndexOf("/tag/");
                 if (index >= 0) tag = url.substring(index + 5);
+            } else if (tag != null && tag.startsWith("BiliTweaks ")) {
+                tag = tag.substring("BiliTweaks ".length());
             } else if (tag != null && tag.startsWith("bili-noads ")) {
                 tag = tag.substring("bili-noads ".length());
             }
             callback.onResult(tag, url);
-        }, "bili-noads-update");
+        }, "BiliTweaks-update");
         thread.start();
     }
 }

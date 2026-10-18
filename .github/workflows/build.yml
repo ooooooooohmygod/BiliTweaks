@@ -46,7 +46,7 @@ jobs:
       - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
-          name: bili-noads-release-apk
+          name: BiliTweaks-release-apk
           path: app/build/outputs/apk/release/*.apk
 
       - name: 发布 Release
@@ -58,5 +58,5 @@ jobs:
             gh release edit "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --notes ""
           else
             gh release create "$GITHUB_REF_NAME" app/build/outputs/apk/release/*.apk \
-              --title "bili-noads $GITHUB_REF_NAME" --notes ""
+              --title "BiliTweaks $GITHUB_REF_NAME" --notes ""
           fi
