@@ -10,6 +10,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 
 import io.github.libxposed.api.XposedModule;
 
@@ -81,55 +82,65 @@ public final class MainHook extends XposedModule {
         List<String> missing = new ArrayList<>();
         int installed = 0;
 
-        // 1. 暂停页总开关恒 false
+        // 1. 暂停页总开关：关闭时放行原逻辑
         installed += install(missing, "暂停页总开关", () -> HookRuntime.hookReturnConstant(
                 method(classLoader, "com.bilibili.adcommon.config.DDConfig", "getPausePageEnable"),
+                enabled(Prefs.KEY_PAUSE_AD),
                 Boolean.FALSE));
 
-        // 2/3. 结束页广告：解码入口与兜底入口恒 false
+        // 2/3. 结束页广告：解码入口与兜底入口
         installed += install(missing, "结束页解码", () -> HookRuntime.hookReturnConstant(
                 method(classLoader, "com.bilibili.ship.theseus.united.page.pausedpage.PausedPageService",
                         "R", byte[].class, boolean.class),
+                enabled(Prefs.KEY_END_AD),
                 Boolean.FALSE));
         installed += install(missing, "结束页兜底", () -> HookRuntime.hookReturnConstant(
                 method(classLoader, "com.bilibili.ship.theseus.united.page.pausedpage.PausedPageService",
                         "e0", byte[].class),
+                enabled(Prefs.KEY_END_AD),
                 Boolean.FALSE));
 
-        // 4/5/6. 开屏三处：保留副作用，返回值恒 null
+        // 4/5/6. 开屏三处：保留副作用，返回值置空
         installed += install(missing, "开屏订单", () -> HookRuntime.hookAfterReturnConstant(
                 method(classLoader, "tv.danmaku.bili.MainActivitySplashComponentExtKt",
                         "a", clazz(classLoader, "tv.danmaku.bili.MainActivityV2")),
+                enabled(Prefs.KEY_SPLASH_AD),
                 null));
         installed += install(missing, "开屏内容", () -> HookRuntime.hookAfterReturnConstant(
                 method(classLoader, "kntr.srcs.app.splash.core.vm.BusinessSplashViewModel",
                         "a", clazz(classLoader, "kntr.srcs.app.splash.model.SplashSource")),
+                enabled(Prefs.KEY_SPLASH_AD),
                 null));
         installed += install(missing, "开屏页面工厂", () -> HookRuntime.hookAfterReturnConstant(
                 method(classLoader, "tv.danmaku.bili.splash.ad.core.SplashManager",
                         "a", clazz(classLoader, "tv.danmaku.bili.splash.ad.model.SplashOrder")),
+                enabled(Prefs.KEY_SPLASH_AD),
                 null));
 
-        // 7/8. 去更新检测：启动与手动检查入口整体禁用
+        // 7/8. 去更新检测：启动与手动检查入口
         installed += install(missing, "启动更新检查", () -> HookRuntime.hookReturnConstant(
                 method(classLoader, "tv.danmaku.bili.update.api.UpdateHelper", "checkUpdateInStartup",
                         Activity.class,
                         clazz(classLoader, "tv.danmaku.bili.update.api.updater.IUpdater")),
+                enabled(Prefs.KEY_UPDATE),
                 null));
         installed += install(missing, "手动更新检查", () -> HookRuntime.hookReturnConstant(
                 method(classLoader, "tv.danmaku.bili.update.api.UpdateHelper", "checkUpdateAndShowDialog",
                         Context.class,
                         clazz(classLoader, "tv.danmaku.bili.update.api.updater.IUpdater")),
+                enabled(Prefs.KEY_UPDATE),
                 null));
 
-        // 9. 缓存的强制更新读取恒 null
+        // 9. 缓存的强制更新读取
         installed += install(missing, "缓存更新读取", () -> HookRuntime.hookReturnConstant(
                 method(classLoader, "qs1.g", "call"),
+                enabled(Prefs.KEY_UPDATE),
                 null));
 
-        // 10. 已下载更新包安装提示禁用
+        // 10. 已下载更新包安装提示
         installed += install(missing, "更新安装提示", () -> HookRuntime.hookReturnConstant(
                 method(classLoader, "y30.l$a", "checkInstall", Context.class),
+                enabled(Prefs.KEY_UPDATE),
                 null));
 
         String summary = "hook 安装完成：" + installed + "/10";
@@ -137,6 +148,10 @@ public final class MainHook extends XposedModule {
             summary += "，未命中：" + String.join("、", missing);
         }
         HookRuntime.log(summary);
+    }
+
+    private static BooleanSupplier enabled(String key) {
+        return () -> HookRuntime.isFeatureEnabled(key);
     }
 
     private static Class<?> clazz(ClassLoader classLoader, String name) throws ClassNotFoundException {
