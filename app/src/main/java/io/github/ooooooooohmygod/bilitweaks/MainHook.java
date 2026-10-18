@@ -159,7 +159,15 @@ public final class MainHook extends XposedModule {
                 enabled(Prefs.KEY_VIDEO_BANNER_AD),
                 null));
 
-        String summary = "hook 安装完成：" + installed + "/11";
+        // 12. 开屏实时广告请求：直接返回 null，跳过网络等待
+        installed += install(missing, "开屏实时广告请求", () -> HookRuntime.hookReturnConstant(
+                method(classLoader, "kntr.srcs.app.splash.services.d", "b",
+                        String.class, String.class,
+                        clazz(classLoader, "kotlin.coroutines.jvm.internal.ContinuationImpl")),
+                enabled(Prefs.KEY_SPLASH_AD),
+                null));
+
+        String summary = "hook 安装完成：" + installed + "/12";
         if (!missing.isEmpty()) {
             summary += "，未命中：" + String.join("、", missing);
         }
