@@ -48,7 +48,7 @@ android {
 
     applicationVariants.configureEach { variant ->
         variant.outputs.configureEach { output ->
-            outputFileName = "BiliTweaks_2.3.4.apk"
+            outputFileName = "BiliTweaks_${android.defaultConfig.versionName}.apk"
         }
     }
 
