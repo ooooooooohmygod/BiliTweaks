@@ -57,6 +57,19 @@ final class HookRuntime {
                 });
     }
 
+    /** 先执行原方法，再把返回值交给回调（回调不改变返回值）。 */
+    static XposedInterface.HookHandle hookAfterResult(Executable executable, ResultCallback callback) {
+        XposedModule value = module();
+        executable.setAccessible(true);
+        return value.hook(executable)
+                .setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE)
+                .intercept(chain -> {
+                    Object result = chain.proceed();
+                    callback.after(result);
+                    return result;
+                });
+    }
+
     /** 先执行原方法，再把调用链交给回调。 */
     static XposedInterface.HookHandle hookAfter(Executable executable, AfterChain callback) {
         XposedModule value = module();
@@ -72,6 +85,10 @@ final class HookRuntime {
 
     interface AfterChain {
         void after(XposedInterface.Chain chain) throws Throwable;
+    }
+
+    interface ResultCallback {
+        void after(Object result) throws Throwable;
     }
 
     private static XposedModule module() {
