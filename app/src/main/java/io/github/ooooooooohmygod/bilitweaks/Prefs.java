@@ -1,4 +1,4 @@
-package io.github.ooooooooohmygod.bilinoads;
+package io.github.ooooooooohmygod.bilitweaks;
 
 final class Prefs {
     static final String NAME = "settings";

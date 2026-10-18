@@ -1,4 +1,4 @@
-package io.github.ooooooooohmygod.bilinoads;
+package io.github.ooooooooohmygod.bilitweaks;
 
 import android.content.Intent;
 import android.net.Uri;
