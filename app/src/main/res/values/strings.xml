@@ -6,6 +6,7 @@
     <string name="feature_splash">去开屏广告</string>
     <string name="feature_pause">去暂停页广告</string>
     <string name="feature_end">去结束页广告</string>
+    <string name="feature_video_banner">去视频下方横幅广告</string>
     <string name="feature_update">去更新检测</string>
     <string name="ui_hint">修改后对后续触发生效；开屏广告与更新检测建议重启哔哩哔哩后验证。</string>
     <string name="check_update">检查更新</string>

@@ -5,6 +5,7 @@ import android.app.Application;
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.os.Build;
+import android.view.ViewGroup;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -143,7 +144,22 @@ public final class MainHook extends XposedModule {
                 enabled(Prefs.KEY_UPDATE),
                 null));
 
-        String summary = "hook 安装完成：" + installed + "/10";
+        // 11. 视频下方横幅广告：跳过 BannerV2Controller 的绑定（该方法本身允许返回 null）
+        installed += install(missing, "视频下方横幅广告", () -> HookRuntime.hookReturnConstant(
+                method(classLoader,
+                        "com.bilibili.ad.adview.videodetail.upper.banner.v2.BannerV2Controller",
+                        "bindUniteBanner",
+                        boolean.class,
+                        ViewGroup.class,
+                        clazz(classLoader, "com.bilibili.gripper.api.ad.biz.videodetail.underplayer.AdUpperBridge"),
+                        clazz(classLoader, "com.bilibili.gripper.api.ad.biz.videodetail.underplayer.AdUpperConfig"),
+                        List.class,
+                        List.class,
+                        clazz(classLoader, "com.bilibili.adcommon.data.model.AdUpperExtraDataDto")),
+                enabled(Prefs.KEY_VIDEO_BANNER_AD),
+                null));
+
+        String summary = "hook 安装完成：" + installed + "/11";
         if (!missing.isEmpty()) {
             summary += "，未命中：" + String.join("、", missing);
         }

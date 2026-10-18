@@ -94,6 +94,24 @@
                 app:dividerInsetEnd="20dp" />
 
             <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switch_video_banner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="56dp"
+                android:paddingStart="20dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="20dp"
+                android:paddingBottom="10dp"
+                android:text="@string/feature_video_banner"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+            <com.google.android.material.divider.MaterialDivider
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:dividerInsetStart="20dp"
+                app:dividerInsetEnd="20dp" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/switch_update"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

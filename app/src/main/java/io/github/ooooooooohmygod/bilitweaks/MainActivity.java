@@ -54,6 +54,7 @@ public final class MainActivity extends AppCompatActivity {
         bindSwitch(R.id.switch_splash, Prefs.KEY_SPLASH_AD);
         bindSwitch(R.id.switch_pause, Prefs.KEY_PAUSE_AD);
         bindSwitch(R.id.switch_end, Prefs.KEY_END_AD);
+        bindSwitch(R.id.switch_video_banner, Prefs.KEY_VIDEO_BANNER_AD);
         bindSwitch(R.id.switch_update, Prefs.KEY_UPDATE);
 
         findViewById(R.id.button_check_update).setOnClickListener(v -> checkForUpdates(true));
