@@ -72,15 +72,15 @@ final class HookRuntime {
                 });
     }
 
-    /** 读取模块设置中的功能开关，默认开启；读取失败时保持原行为。 */
+    /** 读取模块设置中的功能开关，默认关闭；读取失败时也保持关闭。 */
     static boolean isFeatureEnabled(String key) {
         XposedModule value = module;
-        if (value == null) return true;
+        if (value == null) return false;
         try {
-            return value.getRemotePreferences(Prefs.NAME).getBoolean(key, true);
+            return value.getRemotePreferences(Prefs.NAME).getBoolean(key, false);
         } catch (Throwable t) {
             log("读取功能开关失败：" + key, t);
-            return true;
+            return false;
         }
     }
 
