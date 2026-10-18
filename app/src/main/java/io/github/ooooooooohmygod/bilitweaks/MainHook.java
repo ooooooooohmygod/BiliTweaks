@@ -167,7 +167,13 @@ public final class MainHook extends XposedModule {
                 enabled(Prefs.KEY_SPLASH_AD),
                 null));
 
-        String summary = "hook 安装完成：" + installed + "/12";
+        // 13. 品牌开屏壁纸时长置 0，避免显示完壁纸才进主界面
+        installed += install(missing, "品牌开屏时长", () -> HookRuntime.hookReturnConstant(
+                method(classLoader, "tv.danmaku.bili.ui.splash.brand.model.BrandShowInfo", "getDuration"),
+                enabled(Prefs.KEY_SPLASH_AD),
+                0L));
+
+        String summary = "hook 安装完成：" + installed + "/13";
         if (!missing.isEmpty()) {
             summary += "，未命中：" + String.join("、", missing);
         }
