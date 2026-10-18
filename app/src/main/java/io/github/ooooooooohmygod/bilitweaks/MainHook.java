@@ -188,7 +188,21 @@ public final class MainHook extends XposedModule {
                         "getSettingsQuality"),
                 () -> HookRuntime.getIntPreference(Prefs.KEY_FULLSCREEN_QUALITY)));
 
-        String summary = "hook 安装完成：" + installed + "/15";
+        // 16. 播放器默认清晰度（getDefaultQuality 会受自动切档影响）
+        installed += install(missing, "播放器默认清晰度", () -> HookRuntime.hookReturnIntIf(
+                method(classLoader, "com.bilibili.playerbizcommon.utils.PlayerSettingHelper",
+                        "getDefaultQuality"),
+                () -> HookRuntime.getIntPreference(Prefs.KEY_FULLSCREEN_QUALITY)));
+
+        // 17. 选了固定档位时关闭自动清晰度，避免被自动切档覆盖
+        installed += install(missing, "关闭自动清晰度", () -> HookRuntime.hookReturnConstant(
+                method(classLoader, "com.bilibili.playerbizcommon.utils.PlayerSettingHelper",
+                        "isQualityAutoSwitch"),
+                () -> HookRuntime.getIntPreference(Prefs.KEY_INLINE_QUALITY) > 0
+                        || HookRuntime.getIntPreference(Prefs.KEY_FULLSCREEN_QUALITY) > 0,
+                Boolean.FALSE));
+
+        String summary = "hook 安装完成：" + installed + "/17";
         if (!missing.isEmpty()) {
             summary += "，未命中：" + String.join("、", missing);
         }
