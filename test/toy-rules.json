@@ -1,6 +1,6 @@
 {
   "name": "bili-noads-selftest",
-  "description": "toy 样本规则（仅供 CI 自测，不指向真实应用）",
+  "description": "toy 样本规则（仅供自测，不指向真实应用）",
   "target": {"package": "test.toy", "versionName": "0.0.1"},
   "patches": [
     {

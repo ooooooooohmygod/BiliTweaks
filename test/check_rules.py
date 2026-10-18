@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""bili-noads · 规则文件结构校验（CI 用）"""
+"""bili-noads · 规则文件结构校验"""
 import json
 import sys
 from pathlib import Path

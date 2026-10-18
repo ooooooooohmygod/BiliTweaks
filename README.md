@@ -72,7 +72,7 @@ patches/rules.json     补丁规则（类 / 方法 / 操作 / 预期改动数）
 src/patcher.py         补丁应用器（规则 -> smali 树）
 src/build.py           构建编排（官方 APK -> 去广告 APK）
 scripts/build.sh       一键构建入口
-test/                  toy 样本与全链路自测（CI 执行）
+test/                  toy 样本与全链路自测（本地运行）
 docs/PATCHES.md        补丁原理、边界与自查方法
 ```
 
@@ -85,11 +85,6 @@ docs/PATCHES.md        补丁原理、边界与自查方法
 3. 跑 `python3 test/check_rules.py`，再构建验证
 
 patcher 对「找不到方法」「改动数不符」会直接报错，避免版本漂移后漏改。
-
-## CI
-
-- **CI**：每次 push / PR 执行 toy 全链路自测（真实 smali 编译 → baksmali 反汇编 → 打补丁 → 回编 → 回读断言，含负路径）与规则结构校验
-- **Release**：推送 `v*` tag 时打包脚本与工具为 `bili-noads-toolkit-*.zip` 发布——依旧不含任何成品 APK
 
 ## 免责声明
 
