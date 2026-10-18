@@ -202,7 +202,12 @@ public final class MainHook extends XposedModule {
                         || HookRuntime.getIntPreference(Prefs.KEY_FULLSCREEN_QUALITY) > 0,
                 Boolean.FALSE));
 
-        String summary = "hook 安装完成：" + installed + "/17";
+        // 18. 播放器最终请求清晰度：按当前全屏状态强制档位
+        installed += install(missing, "最终请求清晰度", () -> HookRuntime.hookReturnIntFrom(
+                method(classLoader, "tv.danmaku.biliplayerv2.service.VideoPlayHandler", "expectedQuality"),
+                PlayerQuality::resolve));
+
+        String summary = "hook 安装完成：" + installed + "/18";
         if (!missing.isEmpty()) {
             summary += "，未命中：" + String.join("、", missing);
         }

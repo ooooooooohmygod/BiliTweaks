@@ -99,14 +99,23 @@ final class HookRuntime {
 
     /** 偏好值大于 0 时返回该值，否则执行原方法。 */
     static XposedInterface.HookHandle hookReturnIntIf(Executable executable, IntSupplier value) {
+        return hookReturnIntFrom(executable, ignored -> value.getAsInt());
+    }
+
+    /** 根据被拦截对象计算清晰度；结果大于 0 时覆盖原方法。 */
+    static XposedInterface.HookHandle hookReturnIntFrom(Executable executable, IntResolver resolver) {
         XposedModule module = module();
         executable.setAccessible(true);
         return module.hook(executable)
                 .setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE)
                 .intercept(chain -> {
-                    int qn = value.getAsInt();
+                    int qn = resolver.resolve(chain.getThisObject());
                     return qn > 0 ? Integer.valueOf(qn) : chain.proceed();
                 });
+    }
+
+    interface IntResolver {
+        int resolve(Object thisObject) throws Throwable;
     }
 
     /** 先执行原方法，再把调用链交给回调。 */
