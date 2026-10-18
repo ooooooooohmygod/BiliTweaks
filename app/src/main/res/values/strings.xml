@@ -8,6 +8,9 @@
     <string name="feature_end">关闭结束页广告</string>
     <string name="feature_video_banner">关闭视频下方横幅广告</string>
     <string name="feature_update">关闭更新检测</string>
+    <string name="section_quality">清晰度</string>
+    <string name="quality_inline">非全屏清晰度</string>
+    <string name="quality_fullscreen">全屏默认清晰度</string>
     <string name="ui_hint">修改后对后续触发生效；开屏广告与更新检测建议重启哔哩哔哩后验证。</string>
     <string name="check_update">检查更新</string>
     <string name="checking_update">正在通过 Release Atom 检查更新…</string>

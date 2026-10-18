@@ -4,6 +4,7 @@ import android.util.Log;
 
 import java.lang.reflect.Executable;
 import java.util.function.BooleanSupplier;
+import java.util.function.IntSupplier;
 
 import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModule;
@@ -82,6 +83,30 @@ final class HookRuntime {
             log("读取功能开关失败：" + key, t);
             return true;
         }
+    }
+
+    /** 读取整型偏好，0 表示不覆盖原值。 */
+    static int getIntPreference(String key) {
+        XposedModule value = module;
+        if (value == null) return 0;
+        try {
+            return value.getRemotePreferences(Prefs.NAME).getInt(key, 0);
+        } catch (Throwable t) {
+            log("读取清晰度偏好失败：" + key, t);
+            return 0;
+        }
+    }
+
+    /** 偏好值大于 0 时返回该值，否则执行原方法。 */
+    static XposedInterface.HookHandle hookReturnIntIf(Executable executable, IntSupplier value) {
+        XposedModule module = module();
+        executable.setAccessible(true);
+        return module.hook(executable)
+                .setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE)
+                .intercept(chain -> {
+                    int qn = value.getAsInt();
+                    return qn > 0 ? Integer.valueOf(qn) : chain.proceed();
+                });
     }
 
     /** 先执行原方法，再把调用链交给回调。 */

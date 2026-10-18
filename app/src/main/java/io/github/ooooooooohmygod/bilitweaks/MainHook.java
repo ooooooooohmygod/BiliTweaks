@@ -176,7 +176,19 @@ public final class MainHook extends XposedModule {
                 enabled(Prefs.KEY_SPLASH_AD),
                 null));
 
-        String summary = "hook 安装完成：" + installed + "/13";
+        // 14. 非全屏清晰度：CardPlayerQualityService 默认把卡片播放器限制在 720P
+        installed += install(missing, "非全屏清晰度", () -> HookRuntime.hookReturnIntIf(
+                method(classLoader, "su1.f$d", "getExpectedQuality",
+                        clazz(classLoader, "tv.danmaku.biliplayerv2.service.IVideoQualityProvider$ResolveFrom")),
+                () -> HookRuntime.getIntPreference(Prefs.KEY_INLINE_QUALITY)));
+
+        // 15. 全屏默认清晰度：覆盖播放器默认清晰度设置
+        installed += install(missing, "全屏清晰度", () -> HookRuntime.hookReturnIntIf(
+                method(classLoader, "com.bilibili.playerbizcommon.utils.PlayerSettingHelper",
+                        "getSettingsQuality"),
+                () -> HookRuntime.getIntPreference(Prefs.KEY_FULLSCREEN_QUALITY)));
+
+        String summary = "hook 安装完成：" + installed + "/15";
         if (!missing.isEmpty()) {
             summary += "，未命中：" + String.join("、", missing);
         }

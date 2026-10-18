@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,6 +24,7 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
+import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 
 import java.io.File;
 
@@ -55,6 +57,8 @@ public final class MainActivity extends AppCompatActivity {
         bindSwitch(R.id.switch_pause, Prefs.KEY_PAUSE_AD);
         bindSwitch(R.id.switch_end, Prefs.KEY_END_AD);
         bindSwitch(R.id.switch_video_banner, Prefs.KEY_VIDEO_BANNER_AD);
+        bindQualityDropdown(R.id.dropdown_inline_quality, Prefs.KEY_INLINE_QUALITY);
+        bindQualityDropdown(R.id.dropdown_fullscreen_quality, Prefs.KEY_FULLSCREEN_QUALITY);
         bindSwitch(R.id.switch_update, Prefs.KEY_UPDATE);
 
         findViewById(R.id.button_check_update).setOnClickListener(v -> checkForUpdates(true));
@@ -82,6 +86,27 @@ public final class MainActivity extends AppCompatActivity {
         toggle.setOnCheckedChangeListener((buttonView, isChecked) ->
                 getSharedPreferences(Prefs.NAME, MODE_PRIVATE).edit()
                         .putBoolean(key, isChecked)
+                        .apply());
+    }
+
+    private static final int[] QUALITY_VALUES = {0, 16, 32, 64, 74, 80, 112, 116, 120, 125, 126, 127};
+
+    private void bindQualityDropdown(int viewId, String key) {
+        MaterialAutoCompleteTextView view = findViewById(viewId);
+        String[] labels = getResources().getStringArray(R.array.quality_options);
+        view.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, labels));
+        int current = getSharedPreferences(Prefs.NAME, MODE_PRIVATE).getInt(key, 0);
+        int index = 0;
+        for (int i = 0; i < QUALITY_VALUES.length; i++) {
+            if (QUALITY_VALUES[i] == current) {
+                index = i;
+                break;
+            }
+        }
+        view.setText(labels[index], false);
+        view.setOnItemClickListener((parent, item, position, id) ->
+                getSharedPreferences(Prefs.NAME, MODE_PRIVATE).edit()
+                        .putInt(key, QUALITY_VALUES[position])
                         .apply());
     }
 
