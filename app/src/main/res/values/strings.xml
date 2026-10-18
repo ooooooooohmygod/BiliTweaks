@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">BiliTweaks</string>
-    <string name="module_description">哔哩哔哩 9.15.0（9150300）去广告（开屏 / 暂停页 / 结束页）与去更新检测</string>
+    <string name="module_description"></string>
     <string name="section_features">功能开关</string>
     <string name="feature_splash">去开屏广告</string>
     <string name="feature_pause">去暂停页广告</string>

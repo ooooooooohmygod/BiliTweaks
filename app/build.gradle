@@ -16,8 +16,8 @@ android {
         applicationId "io.github.ooooooooohmygod.bilitweaks"
         minSdk 26
         targetSdk 36
-        versionCode 7
-        versionName "2.1.0"
+        versionCode 8
+        versionName "2.1.1"
     }
 
     signingConfigs {
@@ -48,7 +48,7 @@ android {
 
     applicationVariants.configureEach { variant ->
         variant.outputs.configureEach { output ->
-            outputFileName = "BiliTweaks_2.1.0.apk"
+            outputFileName = "BiliTweaks_2.1.1.apk"
         }
     }
 
