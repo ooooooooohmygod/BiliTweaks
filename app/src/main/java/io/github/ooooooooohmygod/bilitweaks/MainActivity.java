@@ -1,10 +1,17 @@
 package io.github.ooooooooohmygod.bilitweaks;
 
+import android.app.PendingIntent;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageInstaller;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
+import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -15,8 +22,19 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.progressindicator.LinearProgressIndicator;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 public final class MainActivity extends AppCompatActivity {
+    private AlertDialog progressDialog;
+    private LinearProgressIndicator progressBar;
+    private TextView progressText;
+    private int lastPercent = Integer.MIN_VALUE;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -28,7 +46,7 @@ public final class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
-        android.view.View content = findViewById(R.id.content);
+        View content = findViewById(R.id.content);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.root), (view, insets) -> {
             Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             toolbar.setPadding(0, bars.top, 0, 0);
@@ -52,6 +70,12 @@ public final class MainActivity extends AppCompatActivity {
         controller.setAppearanceLightNavigationBars(lightBars);
 
         checkForUpdates(false);
+    }
+
+    @Override
+    protected void onDestroy() {
+        dismissProgress();
+        super.onDestroy();
     }
 
     private void bindSwitch(int viewId, String key) {
@@ -97,14 +121,127 @@ public final class MainActivity extends AppCompatActivity {
         new MaterialAlertDialogBuilder(this)
                 .setTitle(getString(R.string.update_available_title, latest))
                 .setMessage(getString(R.string.update_available_message, current, latest))
-                .setPositiveButton(R.string.update_go, (dialog, which) -> {
-                    try {
-                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-                    } catch (Throwable ignored) {
-                    }
-                })
+                .setPositiveButton(R.string.update_now, (dialog, which) -> startUpdate(latest))
+                .setNeutralButton(R.string.update_browser, (dialog, which) -> openBrowser(url))
                 .setNegativeButton(R.string.cancel, null)
                 .show();
+    }
+
+    private void startUpdate(String tag) {
+        if (!getPackageManager().canRequestPackageInstalls()) {
+            Toast.makeText(this, R.string.install_permission_required, Toast.LENGTH_LONG).show();
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (Throwable ignored) {
+            }
+            return;
+        }
+
+        showProgressDialog();
+        File dest = new File(getCacheDir(), "BiliTweaks-update.apk");
+        UpdateChecker.download(UpdateChecker.assetUrl(tag), dest,
+                percent -> runOnUiThread(() -> updateProgress(percent)),
+                (file, error) -> runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) {
+                        if (file != null) file.delete();
+                        return;
+                    }
+                    dismissProgress();
+                    if (file == null) {
+                        Toast.makeText(this, R.string.download_failed, Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    PackageInfo info = getPackageManager()
+                            .getPackageArchiveInfo(file.getAbsolutePath(), 0);
+                    if (info == null || !getPackageName().equals(info.packageName)) {
+                        file.delete();
+                        Toast.makeText(this, R.string.invalid_update_package, Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    installApk(file);
+                }));
+    }
+
+    private void showProgressDialog() {
+        View view = getLayoutInflater().inflate(R.layout.dialog_update_progress, null);
+        progressBar = view.findViewById(R.id.progress_bar);
+        progressText = view.findViewById(R.id.progress_text);
+        lastPercent = Integer.MIN_VALUE;
+        progressDialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.update_now)
+                .setView(view)
+                .setCancelable(false)
+                .create();
+        progressDialog.show();
+    }
+
+    private void updateProgress(int percent) {
+        if (progressDialog == null || !progressDialog.isShowing()) return;
+        if (percent < 0) {
+            if (progressBar != null) progressBar.setIndeterminate(true);
+            if (progressText != null) progressText.setText(R.string.downloading_update);
+            return;
+        }
+        if (percent == lastPercent) return;
+        lastPercent = percent;
+        if (progressBar != null) {
+            if (progressBar.isIndeterminate()) progressBar.setIndeterminate(false);
+            progressBar.setProgressCompat(percent, true);
+        }
+        if (progressText != null) {
+            progressText.setText(getString(R.string.update_progress_percent, percent));
+        }
+    }
+
+    private void dismissProgress() {
+        if (progressDialog != null) {
+            if (progressDialog.isShowing()) progressDialog.dismiss();
+            progressDialog = null;
+        }
+        progressBar = null;
+        progressText = null;
+    }
+
+    private void installApk(File apk) {
+        try {
+            PackageInstaller installer = getPackageManager().getPackageInstaller();
+            PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(
+                    PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+            int sessionId = installer.createSession(params);
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(this, sessionId,
+                    new Intent(this, InstallResultReceiver.class),
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+
+            Toast.makeText(this, R.string.installing_update, Toast.LENGTH_SHORT).show();
+            new Thread(() -> {
+                try (PackageInstaller.Session session = installer.openSession(sessionId);
+                     InputStream input = new FileInputStream(apk);
+                     OutputStream output = session.openWrite("base.apk", 0, apk.length())) {
+                    byte[] buffer = new byte[8192];
+                    int count;
+                    while ((count = input.read(buffer)) > 0) {
+                        output.write(buffer, 0, count);
+                    }
+                    session.fsync(output);
+                    session.commit(pendingIntent.getIntentSender());
+                } catch (Throwable t) {
+                    runOnUiThread(() -> Toast.makeText(this,
+                            getString(R.string.install_failed, String.valueOf(t.getMessage())),
+                            Toast.LENGTH_LONG).show());
+                }
+            }, "BiliTweaks-install").start();
+        } catch (Throwable t) {
+            Toast.makeText(this, getString(R.string.install_failed, String.valueOf(t.getMessage())),
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void openBrowser(String url) {
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+        } catch (Throwable ignored) {
+        }
     }
 
     private static int compareVersions(String a, String b) {
