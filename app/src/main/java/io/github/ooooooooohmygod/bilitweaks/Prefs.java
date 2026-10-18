@@ -10,5 +10,8 @@ final class Prefs {
     static final String KEY_FULLSCREEN_QUALITY = "fullscreen_quality";
     static final String KEY_UPDATE = "update";
 
+    /** 清晰度偏好：动态取当前视频可用的最高档。 */
+    static final int AUTO_MAX_QUALITY = -1;
+
     private Prefs() {}
 }

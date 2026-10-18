@@ -89,7 +89,7 @@ public final class MainActivity extends AppCompatActivity {
                         .apply());
     }
 
-    private static final int[] QUALITY_VALUES = {0, 16, 32, 64, 74, 80, 112, 116, 120, 125, 126, 127};
+    private static final int[] QUALITY_VALUES = {0, Prefs.AUTO_MAX_QUALITY, 16, 32, 64, 74, 80, 112, 116, 120, 125, 126, 127};
 
     private void bindQualityDropdown(int viewId, String key) {
         MaterialAutoCompleteTextView view = findViewById(viewId);

@@ -2,6 +2,7 @@
 <resources>
     <string-array name="quality_options">
         <item>自动</item>
+        <item>自动最高</item>
         <item>360P</item>
         <item>480P</item>
         <item>720P</item>

@@ -177,10 +177,10 @@ public final class MainHook extends XposedModule {
                 null));
 
         // 14. 非全屏清晰度：CardPlayerQualityService 默认把卡片播放器限制在 720P
-        installed += install(missing, "非全屏清晰度", () -> HookRuntime.hookReturnIntIf(
+        installed += install(missing, "非全屏清晰度", () -> HookRuntime.hookReturnIntFrom(
                 method(classLoader, "su1.f$d", "getExpectedQuality",
                         clazz(classLoader, "tv.danmaku.biliplayerv2.service.IVideoQualityProvider$ResolveFrom")),
-                () -> HookRuntime.getIntPreference(Prefs.KEY_INLINE_QUALITY)));
+                PlayerQuality::cardQuality));
 
         // 15. 全屏默认清晰度：覆盖播放器默认清晰度设置
         installed += install(missing, "全屏清晰度", () -> HookRuntime.hookReturnIntIf(
@@ -194,12 +194,12 @@ public final class MainHook extends XposedModule {
                         "getDefaultQuality"),
                 () -> HookRuntime.getIntPreference(Prefs.KEY_FULLSCREEN_QUALITY)));
 
-        // 17. 选了固定档位时关闭自动清晰度，避免被自动切档覆盖
+        // 17. 选了固定档位或自动最高时关闭自动清晰度，避免被自动切档覆盖
         installed += install(missing, "关闭自动清晰度", () -> HookRuntime.hookReturnConstant(
                 method(classLoader, "com.bilibili.playerbizcommon.utils.PlayerSettingHelper",
                         "isQualityAutoSwitch"),
-                () -> HookRuntime.getIntPreference(Prefs.KEY_INLINE_QUALITY) > 0
-                        || HookRuntime.getIntPreference(Prefs.KEY_FULLSCREEN_QUALITY) > 0,
+                () -> HookRuntime.getIntPreference(Prefs.KEY_INLINE_QUALITY) != 0
+                        || HookRuntime.getIntPreference(Prefs.KEY_FULLSCREEN_QUALITY) != 0,
                 Boolean.FALSE));
 
         // 18. 播放器最终请求清晰度：按当前全屏状态强制档位
@@ -207,7 +207,19 @@ public final class MainHook extends XposedModule {
                 method(classLoader, "tv.danmaku.biliplayerv2.service.VideoPlayHandler", "expectedQuality"),
                 PlayerQuality::resolve));
 
-        String summary = "hook 安装完成：" + installed + "/18";
+        // 19. 自动最高对齐：解析完成后把选中档位对齐到视频可用最高档
+        installed += install(missing, "自动最高对齐", () -> HookRuntime.hookBefore(
+                method(classLoader, "tv.danmaku.biliplayerv2.service.NormalVideoPlayHandler", "d",
+                        clazz(classLoader, "tv.danmaku.biliplayerv2.service.NormalVideoPlayHandler"),
+                        clazz(classLoader, "com.bilibili.lib.media.resource.MediaResource"),
+                        clazz(classLoader, "tv.danmaku.biliplayerv2.service.Video$PlayableParams"),
+                        boolean.class,
+                        clazz(classLoader, "tv.danmaku.videoplayer.coreV2.MediaItem"),
+                        Long.class,
+                        int.class),
+                chain -> PlayerQuality.alignAutoMax(chain.getArg(0), chain.getArg(1))));
+
+        String summary = "hook 安装完成：" + installed + "/19";
         if (!missing.isEmpty()) {
             summary += "，未命中：" + String.join("、", missing);
         }

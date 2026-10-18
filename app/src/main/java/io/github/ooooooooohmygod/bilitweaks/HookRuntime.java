@@ -135,6 +135,22 @@ final class HookRuntime {
         void after(XposedInterface.Chain chain) throws Throwable;
     }
 
+    /** 先执行回调（可在原方法执行前修改参数对象），再执行原方法。 */
+    static XposedInterface.HookHandle hookBefore(Executable executable, BeforeChain callback) {
+        XposedModule value = module();
+        executable.setAccessible(true);
+        return value.hook(executable)
+                .setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE)
+                .intercept(chain -> {
+                    callback.before(chain);
+                    return chain.proceed();
+                });
+    }
+
+    interface BeforeChain {
+        void before(XposedInterface.Chain chain) throws Throwable;
+    }
+
     private static XposedModule module() {
         XposedModule value = module;
         if (value == null) {
