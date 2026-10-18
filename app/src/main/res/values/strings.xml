@@ -2,4 +2,8 @@
 <resources>
     <string name="app_name">bili-noads</string>
     <string name="module_description">哔哩哔哩 9.15.0（9150300）去广告（开屏 / 暂停页 / 结束页）与去更新检测</string>
+    <string name="tab_features">功能</string>
+    <string name="tab_about">关于</string>
+    <string name="ui_features_placeholder">功能页（待实现）</string>
+    <string name="ui_about_placeholder">关于页（待实现）\n支持版本：哔哩哔哩 9.15.0（versionCode 9150300）</string>
 </resources>
