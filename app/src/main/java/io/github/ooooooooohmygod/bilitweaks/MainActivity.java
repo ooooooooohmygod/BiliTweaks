@@ -89,7 +89,7 @@ public final class MainActivity extends AppCompatActivity {
                         .apply());
     }
 
-    private static final int[] QUALITY_VALUES = {0, Prefs.AUTO_MAX_QUALITY, 16, 32, 64, 74, 80, 112, 116, 120, 125, 126, 127};
+    private static final int[] QUALITY_VALUES = {0, Prefs.AUTO_MIN_QUALITY, Prefs.AUTO_MAX_QUALITY, 16, 32, 64, 74};
 
     private void bindQualityDropdown(int viewId, String key) {
         MaterialAutoCompleteTextView view = findViewById(viewId);
@@ -97,11 +97,17 @@ public final class MainActivity extends AppCompatActivity {
         view.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, labels));
         int current = getSharedPreferences(Prefs.NAME, MODE_PRIVATE).getInt(key, 0);
         int index = 0;
+        boolean found = false;
         for (int i = 0; i < QUALITY_VALUES.length; i++) {
             if (QUALITY_VALUES[i] == current) {
                 index = i;
+                found = true;
                 break;
             }
+        }
+        if (!found) {
+            // 旧版本设置过的档位已下线，重置为"自动"，避免界面与实际行为不一致
+            getSharedPreferences(Prefs.NAME, MODE_PRIVATE).edit().remove(key).apply();
         }
         view.setText(labels[index], false);
         view.setOnItemClickListener((parent, item, position, id) ->

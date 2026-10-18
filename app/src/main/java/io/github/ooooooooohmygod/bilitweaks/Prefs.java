@@ -13,5 +13,8 @@ final class Prefs {
     /** 清晰度偏好：动态取当前视频可用的最高档。 */
     static final int AUTO_MAX_QUALITY = -1;
 
+    /** 清晰度偏好：动态取当前视频可用的最低档。 */
+    static final int AUTO_MIN_QUALITY = -2;
+
     private Prefs() {}
 }

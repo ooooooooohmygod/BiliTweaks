@@ -13,7 +13,7 @@ final class PlayerQuality {
 
     private PlayerQuality() {}
 
-    /** 播放器最终请求清晰度（hook #18）：按当前全屏状态返回档位，"自动最高"时取可用最高档。 */
+    /** 播放器最终请求清晰度（hook #18）：按当前全屏状态返回档位，自动最低/最高时取可用极值档。 */
     static int resolve(Object handler) {
         try {
             int inline = HookRuntime.getIntPreference(Prefs.KEY_INLINE_QUALITY);
@@ -27,38 +27,44 @@ final class PlayerQuality {
             if (preference == 0) return 0;
 
             boolean autoMax = preference == Prefs.AUTO_MAX_QUALITY;
-            int qn = autoMax ? maxQuality(container) : preference;
+            boolean autoMin = preference == Prefs.AUTO_MIN_QUALITY;
+            int qn = (autoMax || autoMin)
+                    ? boundQuality(container, autoMax)
+                    : preference;
             if (qn <= 0) {
-                if (autoMax) {
-                    logOnce("自动最高清晰度：档位列表未就绪，本次不干预 fullscreen=" + isFullscreen);
+                if (autoMax || autoMin) {
+                    logOnce("自动清晰度：档位列表未就绪，本次不干预 fullscreen=" + isFullscreen);
                 }
                 return 0;
             }
+            String mode = autoMax ? "max" : (autoMin ? "min" : "fixed");
             logOnce("强制清晰度 qn=" + qn + " fullscreen=" + isFullscreen
-                    + " orientation=" + orientation + " auto=" + autoMax);
+                    + " orientation=" + orientation + " mode=" + mode);
             return qn;
         } catch (Throwable ignored) {
             return 0;
         }
     }
 
-    /** 卡片播放器清晰度（hook #14）：默认限制 720P，"自动最高"时改为可用最高档。 */
+    /** 卡片播放器清晰度（hook #14）：默认限制 720P，自动最低/最高时改为可用极值档。 */
     static int cardQuality(Object qualityProvider) {
         try {
             int preference = HookRuntime.getIntPreference(Prefs.KEY_INLINE_QUALITY);
             if (preference > 0) return preference;
-            if (preference != Prefs.AUTO_MAX_QUALITY) return 0;
+            boolean autoMax = preference == Prefs.AUTO_MAX_QUALITY;
+            boolean autoMin = preference == Prefs.AUTO_MIN_QUALITY;
+            if (!autoMax && !autoMin) return 0;
             Object service = readProperty(qualityProvider, "a");
             if (service == null) return 0;
             Object container = readProperty(service, "a");
-            return maxQuality(container);
+            return boundQuality(container, autoMax);
         } catch (Throwable ignored) {
             return 0;
         }
     }
 
-    /** 解析完成后（hook #19）：选了"自动最高"且资源里有更高档位时，把选中档位对齐到最高。 */
-    static void alignAutoMax(Object handler, Object resource) {
+    /** 解析完成后（hook #19）：选了自动最低/最高且档位不在目标极值时，把选中档位对齐过去。 */
+    static void alignAuto(Object handler, Object resource) {
         try {
             if (handler == null || resource == null) return;
             Object container = invoke(handler, "getMPlayerContainer");
@@ -67,7 +73,9 @@ final class PlayerQuality {
             int preference = isFullscreen
                     ? HookRuntime.getIntPreference(Prefs.KEY_FULLSCREEN_QUALITY)
                     : HookRuntime.getIntPreference(Prefs.KEY_INLINE_QUALITY);
-            if (preference != Prefs.AUTO_MAX_QUALITY) return;
+            boolean autoMax = preference == Prefs.AUTO_MAX_QUALITY;
+            boolean autoMin = preference == Prefs.AUTO_MIN_QUALITY;
+            if (!autoMax && !autoMin) return;
 
             Object vodIndex = readProperty(resource, "mVodIndex");
             if (vodIndex == null) return;
@@ -80,22 +88,24 @@ final class PlayerQuality {
             int bestIndex = -1;
             for (int i = 0; i < list.size(); i++) {
                 int qn = intProperty(list.get(i), "mQuality");
-                if (qn > bestQn) {
+                if (qn <= 0) continue;
+                if (bestIndex < 0 || (autoMax ? qn > bestQn : qn < bestQn)) {
                     bestQn = qn;
                     bestIndex = i;
                 }
             }
-            if (bestIndex < 0 || bestQn <= currentQn) return;
+            if (bestIndex < 0) return;
+            if (autoMax ? bestQn <= currentQn : bestQn >= currentQn) return;
             Method setter = resource.getClass().getMethod("setResolvedIndex", int.class);
             setter.setAccessible(true);
             setter.invoke(resource, bestIndex);
-            logOnce("自动最高清晰度：已从 " + currentQn + " 对齐到 " + bestQn);
+            logOnce("自动" + (autoMax ? "最高" : "最低") + "清晰度：已从 " + currentQn + " 对齐到 " + bestQn);
         } catch (Throwable ignored) {
         }
     }
 
-    /** 沿播放器容器读取"可用档位列表"（MediaResource.mVodIndex.mVodList）中的最高档位。 */
-    private static int maxQuality(Object container) {
+    /** 沿播放器容器读取"可用档位列表"（MediaResource.mVodIndex.mVodList）中的最高或最低档位。 */
+    private static int boundQuality(Object container, boolean wantMax) {
         try {
             if (container == null) return 0;
             Object core = invoke(container, "getPlayerCoreService");
@@ -106,11 +116,17 @@ final class PlayerQuality {
             if (vodIndex == null) return 0;
             Object listObject = readProperty(vodIndex, "mVodList");
             if (!(listObject instanceof List)) return 0;
-            int max = 0;
+            int best = 0;
+            boolean found = false;
             for (Object item : (List<?>) listObject) {
-                max = Math.max(max, intProperty(item, "mQuality"));
+                int qn = intProperty(item, "mQuality");
+                if (qn <= 0) continue;
+                if (!found || (wantMax ? qn > best : qn < best)) {
+                    best = qn;
+                    found = true;
+                }
             }
-            return max;
+            return best;
         } catch (Throwable ignored) {
             return 0;
         }

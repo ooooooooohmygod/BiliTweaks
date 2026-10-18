@@ -176,7 +176,7 @@ public final class MainHook extends XposedModule {
                 enabled(Prefs.KEY_SPLASH_AD),
                 null));
 
-        // 14. 非全屏清晰度：CardPlayerQualityService 默认把卡片播放器限制在 720P
+        // 14. 非全屏清晰度：CardPlayerQualityService 默认把卡片播放器限制在 720P，自动最低/最高时改用极值档
         installed += install(missing, "非全屏清晰度", () -> HookRuntime.hookReturnIntFrom(
                 method(classLoader, "su1.f$d", "getExpectedQuality",
                         clazz(classLoader, "tv.danmaku.biliplayerv2.service.IVideoQualityProvider$ResolveFrom")),
@@ -194,7 +194,7 @@ public final class MainHook extends XposedModule {
                         "getDefaultQuality"),
                 () -> HookRuntime.getIntPreference(Prefs.KEY_FULLSCREEN_QUALITY)));
 
-        // 17. 选了固定档位或自动最高时关闭自动清晰度，避免被自动切档覆盖
+        // 17. 选了固定档位或自动最低/最高时关闭自动清晰度，避免被自动切档覆盖
         installed += install(missing, "关闭自动清晰度", () -> HookRuntime.hookReturnConstant(
                 method(classLoader, "com.bilibili.playerbizcommon.utils.PlayerSettingHelper",
                         "isQualityAutoSwitch"),
@@ -207,8 +207,8 @@ public final class MainHook extends XposedModule {
                 method(classLoader, "tv.danmaku.biliplayerv2.service.VideoPlayHandler", "expectedQuality"),
                 PlayerQuality::resolve));
 
-        // 19. 自动最高对齐：解析完成后把选中档位对齐到视频可用最高档
-        installed += install(missing, "自动最高对齐", () -> HookRuntime.hookBefore(
+        // 19. 自动档位对齐：解析完成后把选中档位对齐到自动最低/最高档
+        installed += install(missing, "自动档位对齐", () -> HookRuntime.hookBefore(
                 method(classLoader, "tv.danmaku.biliplayerv2.service.NormalVideoPlayHandler", "d",
                         clazz(classLoader, "tv.danmaku.biliplayerv2.service.NormalVideoPlayHandler"),
                         clazz(classLoader, "com.bilibili.lib.media.resource.MediaResource"),
@@ -217,7 +217,7 @@ public final class MainHook extends XposedModule {
                         clazz(classLoader, "tv.danmaku.videoplayer.coreV2.MediaItem"),
                         Long.class,
                         int.class),
-                chain -> PlayerQuality.alignAutoMax(chain.getArg(0), chain.getArg(1))));
+                chain -> PlayerQuality.alignAuto(chain.getArg(0), chain.getArg(1))));
 
         String summary = "hook 安装完成：" + installed + "/19";
         if (!missing.isEmpty()) {

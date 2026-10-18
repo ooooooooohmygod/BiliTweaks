@@ -2,17 +2,11 @@
 <resources>
     <string-array name="quality_options">
         <item>自动</item>
+        <item>自动最低</item>
         <item>自动最高</item>
         <item>360P</item>
         <item>480P</item>
         <item>720P</item>
         <item>720P60</item>
-        <item>1080P</item>
-        <item>1080P+</item>
-        <item>1080P60</item>
-        <item>4K</item>
-        <item>HDR</item>
-        <item>杜比视界</item>
-        <item>8K</item>
     </string-array>
 </resources>
