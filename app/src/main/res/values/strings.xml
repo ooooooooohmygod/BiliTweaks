@@ -20,7 +20,6 @@
     <string name="thread_dialog_title">自定义线程数</string>
     <string name="thread_dialog_message">范围 2–16，越大越快，也更吃带宽和服务器连接数。</string>
     <string name="thread_dialog_confirm">确定</string>
-    <string name="ui_hint">修改后对后续触发生效；开屏广告与更新检测建议重启哔哩哔哩后验证。</string>
     <string name="check_update">检查更新</string>
     <string name="checking_update">正在通过 Release Atom 检查更新…</string>
     <string name="update_latest">已是最新版本</string>
