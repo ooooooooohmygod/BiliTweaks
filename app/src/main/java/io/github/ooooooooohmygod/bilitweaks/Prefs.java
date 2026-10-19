@@ -10,8 +10,8 @@ final class Prefs {
     static final String KEY_FULLSCREEN_QUALITY = "fullscreen_quality";
     static final String KEY_UPDATE = "update";
     static final String KEY_DOWNLOAD_THREADS = "download_threads";
-    static final String KEY_DEBUG_LOG = "debug_log";
-    static final String KEY_BILIBILI_LOG = "bilibili_log";
+    /** 日志总开关：同时控制模块日志与哔哩哔哩日志镜像（旧版两个开关已合并）。 */
+    static final String KEY_LOG = "log";
     static final String KEY_CLEAR_LOGS = "clear_logs_at";
 
     /** 离线下载多线程：关闭。 */

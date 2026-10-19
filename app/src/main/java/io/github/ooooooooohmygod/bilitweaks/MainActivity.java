@@ -1,7 +1,10 @@
 package io.github.ooooooooohmygod.bilitweaks;
 
+import android.content.BroadcastReceiver;
 import android.content.ClipData;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.net.Uri;
 import android.os.Bundle;
@@ -24,8 +27,8 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 
@@ -56,19 +59,18 @@ public final class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-        bindSwitch(R.id.switch_splash, R.id.card_splash, Prefs.KEY_SPLASH_AD);
-        bindSwitch(R.id.switch_pause, R.id.card_pause, Prefs.KEY_PAUSE_AD);
-        bindSwitch(R.id.switch_end, R.id.card_end, Prefs.KEY_END_AD);
-        bindSwitch(R.id.switch_video_banner, R.id.card_video_banner, Prefs.KEY_VIDEO_BANNER_AD);
+        bindCard(R.id.card_splash, Prefs.KEY_SPLASH_AD);
+        bindCard(R.id.card_pause, Prefs.KEY_PAUSE_AD);
+        bindCard(R.id.card_end, Prefs.KEY_END_AD);
+        bindCard(R.id.card_video_banner, Prefs.KEY_VIDEO_BANNER_AD);
         bindQualityDropdown(R.id.dropdown_inline_quality, Prefs.KEY_INLINE_QUALITY);
         bindQualityDropdown(R.id.dropdown_fullscreen_quality, Prefs.KEY_FULLSCREEN_QUALITY);
         bindThreadDropdown(R.id.dropdown_download_threads, Prefs.KEY_DOWNLOAD_THREADS);
-        bindSwitch(R.id.switch_update, R.id.card_update, Prefs.KEY_UPDATE);
-        bindSwitch(R.id.switch_debug_log, R.id.card_debug_log, Prefs.KEY_DEBUG_LOG);
-        bindSwitch(R.id.switch_bili_log, R.id.card_bili_log, Prefs.KEY_BILIBILI_LOG);
+        bindCard(R.id.card_update, Prefs.KEY_UPDATE);
+        bindCard(R.id.card_log, Prefs.KEY_LOG);
 
         findViewById(R.id.button_check_update).setOnClickListener(v -> checkForUpdates(true));
-        findViewById(R.id.button_clear_logs).setOnClickListener(v -> confirmClearLogs());
+        findViewById(R.id.button_clear_logs).setOnClickListener(v -> clearLogs());
 
         boolean lightBars = (getResources().getConfiguration().uiMode
                 & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
@@ -87,33 +89,67 @@ public final class MainActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
-    private void bindSwitch(int viewId, int cardId, String key) {
-        MaterialSwitch toggle = findViewById(viewId);
-        toggle.setChecked(getSharedPreferences(Prefs.NAME, MODE_PRIVATE).getBoolean(key, true));
-        toggle.setOnCheckedChangeListener((buttonView, isChecked) ->
-                getSharedPreferences(Prefs.NAME, MODE_PRIVATE).edit()
-                        .putBoolean(key, isChecked)
-                        .apply());
-        findViewById(cardId).setOnClickListener(v -> toggle.toggle());
+    /** 功能卡片就是开关：点卡片本体切换，选中态由卡片描边与对勾显示。 */
+    private void bindCard(int cardId, String key) {
+        MaterialCardView card = findViewById(cardId);
+        SharedPreferences prefs = getSharedPreferences(Prefs.NAME, MODE_PRIVATE);
+        card.setChecked(prefs.getBoolean(key, true));
+        card.setOnCheckedChangeListener((view, checked) ->
+                prefs.edit().putBoolean(key, checked).apply());
+        card.setOnClickListener(view -> card.toggle());
     }
 
-    /** 「清理日志」：写入递增的清理请求，由模块在哔哩哔哩进程里删除日志文件。 */
-    private void confirmClearLogs() {
-        new MaterialAlertDialogBuilder(this)
-                .setTitle(R.string.clear_logs)
-                .setMessage(R.string.clear_logs_confirm)
-                .setPositiveButton(R.string.confirm, (dialog, which) -> {
-                    long request = Math.max(
-                            getSharedPreferences(Prefs.NAME, MODE_PRIVATE)
-                                    .getLong(Prefs.KEY_CLEAR_LOGS, 0L) + 1L,
-                            System.currentTimeMillis());
-                    getSharedPreferences(Prefs.NAME, MODE_PRIVATE).edit()
-                            .putLong(Prefs.KEY_CLEAR_LOGS, request)
-                            .apply();
-                    Toast.makeText(this, R.string.clear_logs_requested, Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton(R.string.cancel, null)
-                .show();
+    /**
+     * 「清理日志」：点击后立即删除 Download/BiliTweaks 下的全部日志文件。
+     * 日志文件属哔哩哔哩 uid，App 删不了，所以直接广播给哔哩哔哩进程由模块侧删除；
+     * 哔哩哔哩未运行时收不到广播，写入的请求值会在它下次启动时补清。
+     */
+    private void clearLogs() {
+        SharedPreferences prefs = getSharedPreferences(Prefs.NAME, MODE_PRIVATE);
+        long request = Math.max(
+                prefs.getLong(Prefs.KEY_CLEAR_LOGS, 0L) + 1L,
+                System.currentTimeMillis());
+        prefs.edit().putLong(Prefs.KEY_CLEAR_LOGS, request).commit();
+        Intent intent = new Intent(LogCleaner.ACTION_CLEAR_LOGS);
+        intent.setPackage("tv.danmaku.bili");
+        intent.putExtra(LogCleaner.EXTRA_REQUEST, request);
+        try {
+            sendOrderedBroadcast(intent, null, new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent received) {
+                    int deleted = -1;
+                    String data = getResultData();
+                    if (data != null && !data.isEmpty()) {
+                        try {
+                            deleted = Integer.parseInt(data);
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                    showClearLogsResult(getResultCode(), deleted);
+                }
+            }, null, 0, null, null);
+        } catch (Throwable t) {
+            try {
+                sendBroadcast(intent);
+            } catch (Throwable ignored) {
+            }
+            Toast.makeText(this, R.string.clear_logs_pending, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void showClearLogsResult(int result, int deleted) {
+        runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            if (result == LogCleaner.RESULT_CLEANED) {
+                Toast.makeText(this, deleted > 0
+                        ? getString(R.string.clear_logs_done, deleted)
+                        : getString(R.string.clear_logs_cleared), Toast.LENGTH_SHORT).show();
+            } else if (result == LogCleaner.RESULT_FAILED) {
+                Toast.makeText(this, R.string.clear_logs_failed, Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, R.string.clear_logs_pending, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     private static final int[] QUALITY_VALUES = {0, Prefs.AUTO_MIN_QUALITY, Prefs.AUTO_MAX_QUALITY, 16, 32, 64, 74};

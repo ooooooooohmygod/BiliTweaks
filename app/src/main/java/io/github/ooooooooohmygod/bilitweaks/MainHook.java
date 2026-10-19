@@ -62,14 +62,13 @@ public final class MainHook extends XposedModule {
             HookRuntime.hookAfter(attach, chain -> {
                 Context context = (Context) chain.getArg(0);
                 if (context == null) return;
-                boolean debugLog = HookRuntime.isFeatureEnabled(Prefs.KEY_DEBUG_LOG);
-                boolean biliLog = HookRuntime.isFeatureEnabled(Prefs.KEY_BILIBILI_LOG);
-                LogFile.init(context, processName, debugLog, biliLog);
+                boolean logEnabled = HookRuntime.isFeatureEnabled(Prefs.KEY_LOG);
+                LogFile.init(context, processName, logEnabled);
                 HookRuntime.log("设置：离线下载线程数=" + HookRuntime.getIntPreference(
                         Prefs.KEY_DOWNLOAD_THREADS, Prefs.DOWNLOAD_THREADS_DEFAULT));
                 if (!isTargetVersion(context)) return;
                 if (!INSTALLED.compareAndSet(false, true)) return;
-                installHooks(context.getClassLoader(), biliLog);
+                installHooks(context.getClassLoader(), logEnabled);
             });
         } catch (Throwable t) {
             HookRuntime.log("hook Application.attach 失败，模块未生效", t);
@@ -95,7 +94,7 @@ public final class MainHook extends XposedModule {
         return false;
     }
 
-    private void installHooks(ClassLoader classLoader, boolean biliLog) {
+    private void installHooks(ClassLoader classLoader, boolean logEnabled) {
         List<String> missing = new ArrayList<>();
         if (mainProcess) {
             installMainHooks(classLoader, missing);
@@ -107,8 +106,8 @@ public final class MainHook extends XposedModule {
             HookRuntime.log("下载加速 hook：" + (downloadInstalled == 1 ? "已安装" : "未安装"));
         }
 
-        // 21. 哔哩哔哩日志镜像：哔哩哔哩所有进程都安装（设置里关掉就不装）
-        if (biliLog) {
+        // 21. 哔哩哔哩日志镜像：哔哩哔哩所有进程都安装（设置里「打印日志」关掉就不装）
+        if (logEnabled) {
             install(missing, "哔哩哔哩日志", () -> BiliLogMirror.install(classLoader));
         }
     }

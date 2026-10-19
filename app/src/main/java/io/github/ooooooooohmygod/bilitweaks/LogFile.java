@@ -23,7 +23,7 @@ import java.util.Locale;
 /**
  * 日志落盘：把日志追加到 Download/BiliTweaks/ 下的文本文件，方便直接在手机上取日志。
  * 模块日志写 BiliTweaks.log，哔哩哔哩日志镜像写 BiliLog.log；哔哩哔哩各进程共用一个文件，
- * 每行带进程标签，只追加不滚动，统一由设置里的「清理日志」清空。
+ * 每行带进程标签，只追加不滚动，统一由设置里的「打印日志」开关控制、「清理日志」清空。
  * Android 10+ 走 MediaStore 的 Downloads 集合（免存储权限），低版本直接写公共目录；
  * 两边都写不进去时退回哔哩哔哩的应用外部目录，保证日志尽量能落盘。
  */
@@ -39,14 +39,14 @@ final class LogFile {
 
     private LogFile() {}
 
-    static void init(Context value, String processName, boolean moduleEnabled, boolean biliEnabled) {
+    static void init(Context value, String processName, boolean logEnabled) {
         Context app = value.getApplicationContext();
         context = app != null ? app : value;
         processTag = tag(processName);
         // 先处理积压的「清理日志」请求，再接管日志文件，避免清理后马上又写回旧文件
         LogCleaner.start(context);
-        Sink module = moduleEnabled ? new Sink(MODULE_FILE, processTag) : null;
-        Sink bili = biliEnabled ? new Sink(BILI_FILE, processTag) : null;
+        Sink module = logEnabled ? new Sink(MODULE_FILE, processTag) : null;
+        Sink bili = logEnabled ? new Sink(BILI_FILE, processTag) : null;
         moduleSink = module;
         biliSink = bili;
         if (module != null) {
