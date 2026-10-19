@@ -65,6 +65,7 @@ public final class MainActivity extends AppCompatActivity {
         bindThreadDropdown(R.id.dropdown_download_threads, Prefs.KEY_DOWNLOAD_THREADS);
         bindSwitch(R.id.switch_update, Prefs.KEY_UPDATE);
         bindSwitch(R.id.switch_debug_log, Prefs.KEY_DEBUG_LOG);
+        bindSwitch(R.id.switch_bili_log, Prefs.KEY_BILIBILI_LOG);
 
         findViewById(R.id.button_check_update).setOnClickListener(v -> checkForUpdates(true));
 

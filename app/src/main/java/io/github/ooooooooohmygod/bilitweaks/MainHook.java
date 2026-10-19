@@ -28,6 +28,7 @@ public final class MainHook extends XposedModule {
     private static final AtomicBoolean INSTALLED = new AtomicBoolean(false);
 
     private boolean mainProcess;
+    private boolean biliProcess;
     private boolean downloadProcess;
     private String processName;
 
@@ -37,17 +38,20 @@ public final class MainHook extends XposedModule {
         String process = param.getProcessName();
         processName = process;
         mainProcess = TARGET_PACKAGE.equals(process);
+        // 哔哩哔哩任意子进程都要装日志镜像，所以除了主进程外只对非哔哩哔哩进程卸载
+        biliProcess = process != null
+                && (process.equals(TARGET_PACKAGE) || process.startsWith(TARGET_PACKAGE + ":"));
         // 离线缓存下载跑在 :download 进程（下载器也初始化在 :web），这两个进程只装下载加速
-        downloadProcess = !mainProcess && process != null && process.startsWith(TARGET_PACKAGE)
+        downloadProcess = !mainProcess && biliProcess
                 && (process.contains("download") || process.endsWith(":web"));
-        if (!mainProcess && !downloadProcess) {
+        if (!biliProcess) {
             detach();
         }
     }
 
     @Override
     public void onPackageReady(PackageReadyParam param) {
-        if ((!mainProcess && !downloadProcess)
+        if (!biliProcess
                 || !TARGET_PACKAGE.equals(param.getPackageName())
                 || !param.isFirstPackage()
                 || !ATTACH_HOOKED.compareAndSet(false, true)) {
@@ -58,12 +62,14 @@ public final class MainHook extends XposedModule {
             HookRuntime.hookAfter(attach, chain -> {
                 Context context = (Context) chain.getArg(0);
                 if (context == null) return;
-                LogFile.init(context, processName, HookRuntime.isFeatureEnabled(Prefs.KEY_DEBUG_LOG));
+                boolean debugLog = HookRuntime.isFeatureEnabled(Prefs.KEY_DEBUG_LOG);
+                boolean biliLog = HookRuntime.isFeatureEnabled(Prefs.KEY_BILIBILI_LOG);
+                LogFile.init(context, processName, debugLog, biliLog);
                 HookRuntime.log("设置：离线下载线程数=" + HookRuntime.getIntPreference(
                         Prefs.KEY_DOWNLOAD_THREADS, Prefs.DOWNLOAD_THREADS_DEFAULT));
                 if (!isTargetVersion(context)) return;
                 if (!INSTALLED.compareAndSet(false, true)) return;
-                installHooks(context.getClassLoader());
+                installHooks(context.getClassLoader(), biliLog);
             });
         } catch (Throwable t) {
             HookRuntime.log("hook Application.attach 失败，模块未生效", t);
@@ -89,15 +95,22 @@ public final class MainHook extends XposedModule {
         return false;
     }
 
-    private void installHooks(ClassLoader classLoader) {
+    private void installHooks(ClassLoader classLoader, boolean biliLog) {
         List<String> missing = new ArrayList<>();
         if (mainProcess) {
             installMainHooks(classLoader, missing);
         }
 
         // 20. 离线缓存单文件多线程下载：主进程与 :download / :web 进程都会安装
-        int downloadInstalled = install(missing, "下载加速", () -> DownloadAccelerator.install(classLoader));
-        HookRuntime.log("下载加速 hook：" + (downloadInstalled == 1 ? "已安装" : "未安装"));
+        if (mainProcess || downloadProcess) {
+            int downloadInstalled = install(missing, "下载加速", () -> DownloadAccelerator.install(classLoader));
+            HookRuntime.log("下载加速 hook：" + (downloadInstalled == 1 ? "已安装" : "未安装"));
+        }
+
+        // 21. 哔哩哔哩日志镜像：哔哩哔哩所有进程都安装（设置里关掉就不装）
+        if (biliLog) {
+            install(missing, "哔哩哔哩日志", () -> BiliLogMirror.install(classLoader));
+        }
     }
 
     private static void installMainHooks(ClassLoader classLoader, List<String> missing) {

@@ -141,6 +141,24 @@
                 android:text="@string/feature_debug_log"
                 android:textAppearance="?attr/textAppearanceTitleMedium" />
 
+            <com.google.android.material.divider.MaterialDivider
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:dividerInsetStart="20dp"
+                app:dividerInsetEnd="20dp" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switch_bili_log"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="56dp"
+                android:paddingStart="20dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="20dp"
+                android:paddingBottom="10dp"
+                android:text="@string/feature_bili_log"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
