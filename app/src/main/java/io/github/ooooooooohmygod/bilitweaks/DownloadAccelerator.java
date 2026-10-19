@@ -197,6 +197,7 @@ final class DownloadAccelerator {
             }
             if (url == null || url.isEmpty()) return HookRuntime.PASS_THROUGH;
             if (fSpeedLimit != null && ((Number) fSpeedLimit.get(task)).intValue() > 0) {
+                HookRuntime.log("跳过加速：任务设置了限速，保留原生单连接");
                 return HookRuntime.PASS_THROUGH;
             }
             Object impl = chain.getThisObject();
@@ -224,23 +225,35 @@ final class DownloadAccelerator {
             }
 
             Map<String, String> headers = headersOf(task);
-            long total = -1;
-            try {
-                probe = openConnection(url, headers, offset, offset);
-                int code = probe.getResponseCode();
-                if (code != 206) return HookRuntime.PASS_THROUGH;
-                String contentRange = probe.getHeaderField("Content-Range");
-                if (contentRange == null) return HookRuntime.PASS_THROUGH;
-                int slash = contentRange.lastIndexOf('/');
-                if (slash < 0) return HookRuntime.PASS_THROUGH;
-                total = Long.parseLong(contentRange.substring(slash + 1).trim());
-            } finally {
-                if (probe != null) probe.disconnect();
-                probe = null;
+            long total = 0;
+            if (fTotal != null) {
+                Object hint = fTotal.get(task);
+                if (hint instanceof Number) total = ((Number) hint).longValue();
+            }
+            if (total <= 0) {
+                try {
+                    probe = openConnection(url, headers, offset, offset);
+                    int code = probe.getResponseCode();
+                    if (code != 206) {
+                        HookRuntime.log("跳过加速：Range 探测返回 " + code + "，走原生单连接");
+                        return HookRuntime.PASS_THROUGH;
+                    }
+                    String contentRange = probe.getHeaderField("Content-Range");
+                    if (contentRange == null) return HookRuntime.PASS_THROUGH;
+                    int slash = contentRange.lastIndexOf('/');
+                    if (slash < 0) return HookRuntime.PASS_THROUGH;
+                    total = Long.parseLong(contentRange.substring(slash + 1).trim());
+                } finally {
+                    if (probe != null) probe.disconnect();
+                    probe = null;
+                }
             }
             if (total <= 0) return HookRuntime.PASS_THROUGH;
             long remaining = total - offset;
-            if (remaining < MIN_REMAINING_BYTES) return HookRuntime.PASS_THROUGH;
+            if (remaining < MIN_REMAINING_BYTES) {
+                HookRuntime.log("跳过加速：剩余 " + remaining + " 字节，小于 2MB");
+                return HookRuntime.PASS_THROUGH;
+            }
 
             File parent = tmp.getParentFile();
             if (parent != null && !parent.exists() && !parent.mkdirs() && !parent.exists()) {
@@ -264,8 +277,14 @@ final class DownloadAccelerator {
             HookRuntime.log("多线程下载完成：用时=" + (System.currentTimeMillis() - began)
                     + "ms 大小=" + total + " 临时文件=" + tmpPath);
             notifyLoading(task, total, total);
-            Object result = mFinish.invoke(null, impl, task, makePath(tmpPath), makePath(targetPath),
-                    total, startTimeMs, Collections.emptyMap());
+            Object result;
+            try {
+                result = mFinish.invoke(null, impl, task, makePath(tmpPath), makePath(targetPath),
+                        total, startTimeMs, Collections.emptyMap());
+            } catch (Throwable finishError) {
+                HookRuntime.log("收尾失败（md5 校验或改名），回退原生", finishError);
+                return HookRuntime.PASS_THROUGH;
+            }
             return result != null ? result : "";
         } catch (Throwable t) {
             HookRuntime.log("多线程下载失败，回退原生单连接", t);

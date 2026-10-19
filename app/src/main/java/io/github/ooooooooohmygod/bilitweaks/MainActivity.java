@@ -64,6 +64,7 @@ public final class MainActivity extends AppCompatActivity {
         bindQualityDropdown(R.id.dropdown_fullscreen_quality, Prefs.KEY_FULLSCREEN_QUALITY);
         bindThreadDropdown(R.id.dropdown_download_threads, Prefs.KEY_DOWNLOAD_THREADS);
         bindSwitch(R.id.switch_update, Prefs.KEY_UPDATE);
+        bindSwitch(R.id.switch_debug_log, Prefs.KEY_DEBUG_LOG);
 
         findViewById(R.id.button_check_update).setOnClickListener(v -> checkForUpdates(true));
 

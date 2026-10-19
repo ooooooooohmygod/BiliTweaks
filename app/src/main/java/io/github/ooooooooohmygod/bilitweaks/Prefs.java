@@ -10,6 +10,7 @@ final class Prefs {
     static final String KEY_FULLSCREEN_QUALITY = "fullscreen_quality";
     static final String KEY_UPDATE = "update";
     static final String KEY_DOWNLOAD_THREADS = "download_threads";
+    static final String KEY_DEBUG_LOG = "debug_log";
 
     /** 离线下载多线程：关闭。 */
     static final int DOWNLOAD_THREADS_OFF = 0;

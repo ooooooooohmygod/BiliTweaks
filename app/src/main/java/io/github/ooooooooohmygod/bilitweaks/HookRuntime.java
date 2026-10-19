@@ -30,6 +30,7 @@ final class HookRuntime {
         } else {
             Log.i(TAG, message);
         }
+        LogFile.append(message);
     }
 
     static void log(String message, Throwable error) {
@@ -39,6 +40,16 @@ final class HookRuntime {
         } else {
             Log.e(TAG, message, error);
         }
+        StringBuilder line = new StringBuilder(message);
+        if (error != null) {
+            line.append("：").append(error);
+            StackTraceElement[] trace = error.getStackTrace();
+            int count = Math.min(trace.length, 8);
+            for (int i = 0; i < count; i++) {
+                line.append("\n    at ").append(trace[i]);
+            }
+        }
+        LogFile.append(line.toString());
     }
 
     /** 跳过原方法，直接返回 constant（对应 smali 的 force_false / force_void / force_null）。 */

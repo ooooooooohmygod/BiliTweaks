@@ -29,11 +29,13 @@ public final class MainHook extends XposedModule {
 
     private boolean mainProcess;
     private boolean downloadProcess;
+    private String processName;
 
     @Override
     public void onModuleLoaded(ModuleLoadedParam param) {
         HookRuntime.attach(this);
         String process = param.getProcessName();
+        processName = process;
         mainProcess = TARGET_PACKAGE.equals(process);
         // 离线缓存下载跑在 :download 进程（下载器也初始化在 :web），这两个进程只装下载加速
         downloadProcess = !mainProcess && process != null && process.startsWith(TARGET_PACKAGE)
@@ -56,6 +58,9 @@ public final class MainHook extends XposedModule {
             HookRuntime.hookAfter(attach, chain -> {
                 Context context = (Context) chain.getArg(0);
                 if (context == null) return;
+                LogFile.init(context, processName, HookRuntime.isFeatureEnabled(Prefs.KEY_DEBUG_LOG));
+                HookRuntime.log("设置：离线下载线程数=" + HookRuntime.getIntPreference(
+                        Prefs.KEY_DOWNLOAD_THREADS, Prefs.DOWNLOAD_THREADS_DEFAULT));
                 if (!isTargetVersion(context)) return;
                 if (!INSTALLED.compareAndSet(false, true)) return;
                 installHooks(context.getClassLoader());
