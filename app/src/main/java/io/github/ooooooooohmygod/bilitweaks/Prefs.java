@@ -11,9 +11,6 @@ final class Prefs {
     static final String KEY_UPDATE = "update";
     static final String KEY_DOWNLOAD_THREADS = "download_threads";
 
-    static final String KEY_LOG = "log";
-    static final String KEY_CLEAR_LOGS = "clear_logs_at";
-
     static final int DOWNLOAD_THREADS_OFF = 0;
 
     static final int DOWNLOAD_THREADS_DEFAULT = 4;

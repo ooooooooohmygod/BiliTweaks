@@ -1,7 +1,5 @@
 package io.github.ooooooooohmygod.bilitweaks;
 
-import android.util.Log;
-
 import java.lang.reflect.Executable;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
@@ -10,7 +8,6 @@ import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModule;
 
 final class HookRuntime {
-    private static final String TAG = "BiliTweaks";
     private static volatile XposedModule module;
 
     static final Object PASS_THROUGH = new Object();
@@ -19,35 +16,6 @@ final class HookRuntime {
 
     static void attach(XposedModule value) {
         module = value;
-    }
-
-    static void log(String message) {
-        XposedModule value = module;
-        if (value != null) {
-            value.log(Log.INFO, TAG, message);
-        } else {
-            Log.i(TAG, message);
-        }
-        LogFile.append(message);
-    }
-
-    static void log(String message, Throwable error) {
-        XposedModule value = module;
-        if (value != null) {
-            value.log(Log.ERROR, TAG, message, error);
-        } else {
-            Log.e(TAG, message, error);
-        }
-        StringBuilder line = new StringBuilder(message);
-        if (error != null) {
-            line.append("：").append(error);
-            StackTraceElement[] trace = error.getStackTrace();
-            int count = Math.min(trace.length, 8);
-            for (int i = 0; i < count; i++) {
-                line.append("\n    at ").append(trace[i]);
-            }
-        }
-        LogFile.append(line.toString());
     }
 
     static XposedInterface.HookHandle hookReturnConstant(Executable executable, Object constant) {
@@ -87,7 +55,6 @@ final class HookRuntime {
         try {
             return value.getRemotePreferences(Prefs.NAME).getBoolean(key, true);
         } catch (Throwable t) {
-            log("读取功能开关失败：" + key, t);
             return true;
         }
     }
@@ -102,7 +69,6 @@ final class HookRuntime {
         try {
             return value.getRemotePreferences(Prefs.NAME).getInt(key, defaultValue);
         } catch (Throwable t) {
-            log("读取整型偏好失败：" + key, t);
             return defaultValue;
         }
     }

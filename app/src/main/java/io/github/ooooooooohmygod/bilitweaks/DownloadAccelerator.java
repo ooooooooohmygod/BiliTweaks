@@ -84,8 +84,6 @@ final class DownloadAccelerator {
         resolve(classLoader, impl);
         HookRuntime.hookReplace(target, DownloadAccelerator::attempt);
         installed = true;
-        HookRuntime.log("下载加速已安装：离线缓存单文件 " + Prefs.DOWNLOAD_THREADS_MIN + "-"
-                + Prefs.DOWNLOAD_THREADS_MAX + " 线程分段下载");
     }
 
     private static void resolve(ClassLoader classLoader, Class<?> impl) throws Throwable {
@@ -191,7 +189,6 @@ final class DownloadAccelerator {
             }
             if (url == null || url.isEmpty()) return HookRuntime.PASS_THROUGH;
             if (fSpeedLimit != null && ((Number) fSpeedLimit.get(task)).intValue() > 0) {
-                HookRuntime.log("跳过加速：任务设置了限速，保留原生单连接");
                 return HookRuntime.PASS_THROUGH;
             }
             Object impl = chain.getThisObject();
@@ -229,7 +226,6 @@ final class DownloadAccelerator {
                     probe = openConnection(url, headers, offset, offset);
                     int code = probe.getResponseCode();
                     if (code != 206) {
-                        HookRuntime.log("跳过加速：Range 探测返回 " + code + "，走原生单连接");
                         return HookRuntime.PASS_THROUGH;
                     }
                     String contentRange = probe.getHeaderField("Content-Range");
@@ -245,7 +241,6 @@ final class DownloadAccelerator {
             if (total <= 0) return HookRuntime.PASS_THROUGH;
             long remaining = total - offset;
             if (remaining < MIN_REMAINING_BYTES) {
-                HookRuntime.log("跳过加速：剩余 " + remaining + " 字节，小于 2MB");
                 return HookRuntime.PASS_THROUGH;
             }
 
@@ -262,26 +257,19 @@ final class DownloadAccelerator {
             } catch (Throwable ignored) {
             }
             long startTimeMs = ((Number) chain.getArg(2)).longValue();
-            HookRuntime.log("多线程下载开始：线程=" + threads + " 总大小=" + total
-                    + " 已缓存=" + offset + " 临时文件=" + tmpPath);
-            long began = System.currentTimeMillis();
             if (!downloadSegments(task, url, headers, tmp, offset, total, threads)) {
                 return HookRuntime.PASS_THROUGH;
             }
-            HookRuntime.log("多线程下载完成：用时=" + (System.currentTimeMillis() - began)
-                    + "ms 大小=" + total + " 临时文件=" + tmpPath);
             notifyLoading(task, total, total);
             Object result;
             try {
                 result = mFinish.invoke(null, impl, task, makePath(tmpPath), makePath(targetPath),
                         total, startTimeMs, Collections.emptyMap());
             } catch (Throwable finishError) {
-                HookRuntime.log("收尾失败（md5 校验或改名），回退原生", finishError);
                 return HookRuntime.PASS_THROUGH;
             }
             return result != null ? result : "";
         } catch (Throwable t) {
-            HookRuntime.log("多线程下载失败，回退原生单连接", t);
             return HookRuntime.PASS_THROUGH;
         } finally {
             if (probe != null) probe.disconnect();
@@ -313,7 +301,6 @@ final class DownloadAccelerator {
                 } catch (StopRequested ignored) {
                 } catch (Throwable error) {
                     segment.failed = true;
-                    HookRuntime.log("分段下载失败", error);
                 }
                 if (!stop.get() && segment.written < segment.length()) {
                     segment.failed = true;
@@ -375,7 +362,6 @@ final class DownloadAccelerator {
         }
         if (!success) {
             truncateToPrefix(tmp, segments, offset);
-            HookRuntime.log("多线程下载中止：" + (stopped ? "任务已暂停或取消" : "分段失败"));
             return false;
         }
         reporter.report(done.get(), true);
@@ -426,7 +412,6 @@ final class DownloadAccelerator {
                 } catch (IOException error) {
                     if (stop.get()) throw new StopRequested();
                     if (++attempts >= MAX_SEGMENT_ATTEMPTS) throw error;
-                    HookRuntime.log("分段重试 " + attempts + "：" + error);
                 } finally {
                     if (connection != null) {
                         live.remove(connection);
@@ -453,7 +438,6 @@ final class DownloadAccelerator {
         try (RandomAccessFile file = new RandomAccessFile(tmp, "rw")) {
             file.setLength(prefix);
         } catch (Throwable t) {
-            HookRuntime.log("截断临时文件失败", t);
         }
     }
 

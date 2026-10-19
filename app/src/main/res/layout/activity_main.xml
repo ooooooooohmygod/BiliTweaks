@@ -191,35 +191,6 @@
                         android:textAppearance="?attr/textAppearanceTitleSmall"
                         android:textColor="?attr/colorOnSurface" />
                 </com.google.android.material.card.MaterialCardView>
-
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/card_log"
-                    style="?attr/materialCardViewOutlinedStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_columnWeight="1"
-                    android:layout_gravity="fill"
-                    android:layout_margin="6dp"
-                    android:checkable="true"
-                    android:clickable="true"
-                    android:focusable="true"
-                    app:checkedIcon="@drawable/ic_card_checked"
-                    app:checkedIconMargin="10dp"
-                    app:checkedIconSize="18dp"
-                    app:checkedIconTint="@color/card_toggle"
-                    app:strokeColor="@color/card_toggle">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:paddingStart="14dp"
-                        android:paddingTop="12dp"
-                        android:paddingEnd="14dp"
-                        android:paddingBottom="12dp"
-                        android:text="@string/feature_log"
-                        android:textAppearance="?attr/textAppearanceTitleSmall"
-                        android:textColor="?attr/colorOnSurface" />
-                </com.google.android.material.card.MaterialCardView>
             </GridLayout>
 
             <TextView
@@ -312,14 +283,6 @@
                 android:paddingTop="16dp"
                 android:paddingEnd="20dp"
                 android:paddingBottom="24dp">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_clear_logs"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="12dp"
-                    android:text="@string/clear_logs" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/button_check_update"

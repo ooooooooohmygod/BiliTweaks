@@ -1,8 +1,6 @@
 package io.github.ooooooooohmygod.bilitweaks;
 
-import android.content.BroadcastReceiver;
 import android.content.ClipData;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
@@ -67,10 +65,8 @@ public final class MainActivity extends AppCompatActivity {
         bindQualityDropdown(R.id.dropdown_fullscreen_quality, Prefs.KEY_FULLSCREEN_QUALITY);
         bindThreadDropdown(R.id.dropdown_download_threads, Prefs.KEY_DOWNLOAD_THREADS);
         bindCard(R.id.card_update, Prefs.KEY_UPDATE);
-        bindCard(R.id.card_log, Prefs.KEY_LOG);
 
         findViewById(R.id.button_check_update).setOnClickListener(v -> checkForUpdates(true));
-        findViewById(R.id.button_clear_logs).setOnClickListener(v -> clearLogs());
 
         boolean lightBars = (getResources().getConfiguration().uiMode
                 & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
@@ -96,54 +92,6 @@ public final class MainActivity extends AppCompatActivity {
         card.setOnCheckedChangeListener((view, checked) ->
                 prefs.edit().putBoolean(key, checked).apply());
         card.setOnClickListener(view -> card.toggle());
-    }
-
-    private void clearLogs() {
-        SharedPreferences prefs = getSharedPreferences(Prefs.NAME, MODE_PRIVATE);
-        long request = Math.max(
-                prefs.getLong(Prefs.KEY_CLEAR_LOGS, 0L) + 1L,
-                System.currentTimeMillis());
-        prefs.edit().putLong(Prefs.KEY_CLEAR_LOGS, request).commit();
-        Intent intent = new Intent(LogCleaner.ACTION_CLEAR_LOGS);
-        intent.setPackage("tv.danmaku.bili");
-        intent.putExtra(LogCleaner.EXTRA_REQUEST, request);
-        try {
-            sendOrderedBroadcast(intent, null, new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context context, Intent received) {
-                    int deleted = -1;
-                    String data = getResultData();
-                    if (data != null && !data.isEmpty()) {
-                        try {
-                            deleted = Integer.parseInt(data);
-                        } catch (Throwable ignored) {
-                        }
-                    }
-                    showClearLogsResult(getResultCode(), deleted);
-                }
-            }, null, 0, null, null);
-        } catch (Throwable t) {
-            try {
-                sendBroadcast(intent);
-            } catch (Throwable ignored) {
-            }
-            Toast.makeText(this, R.string.clear_logs_pending, Toast.LENGTH_LONG).show();
-        }
-    }
-
-    private void showClearLogsResult(int result, int deleted) {
-        runOnUiThread(() -> {
-            if (isFinishing() || isDestroyed()) return;
-            if (result == LogCleaner.RESULT_CLEANED) {
-                Toast.makeText(this, deleted > 0
-                        ? getString(R.string.clear_logs_done, deleted)
-                        : getString(R.string.clear_logs_cleared), Toast.LENGTH_SHORT).show();
-            } else if (result == LogCleaner.RESULT_FAILED) {
-                Toast.makeText(this, R.string.clear_logs_failed, Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, R.string.clear_logs_pending, Toast.LENGTH_LONG).show();
-            }
-        });
     }
 
     private static final int[] QUALITY_VALUES = {0, Prefs.AUTO_MIN_QUALITY, Prefs.AUTO_MAX_QUALITY, 16, 32, 64, 74};

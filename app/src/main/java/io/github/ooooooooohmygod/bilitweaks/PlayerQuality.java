@@ -8,8 +8,6 @@ import java.lang.reflect.Method;
 import java.util.List;
 
 final class PlayerQuality {
-    private static volatile String lastLogged;
-
     private PlayerQuality() {}
 
     static int resolve(Object handler) {
@@ -30,14 +28,8 @@ final class PlayerQuality {
                     ? boundQuality(container, autoMax)
                     : preference;
             if (qn <= 0) {
-                if (autoMax || autoMin) {
-                    logOnce("自动清晰度：档位列表未就绪，本次不干预 fullscreen=" + isFullscreen);
-                }
                 return 0;
             }
-            String mode = autoMax ? "max" : (autoMin ? "min" : "fixed");
-            logOnce("强制清晰度 qn=" + qn + " fullscreen=" + isFullscreen
-                    + " orientation=" + orientation + " mode=" + mode);
             return qn;
         } catch (Throwable ignored) {
             return 0;
@@ -95,7 +87,6 @@ final class PlayerQuality {
             Method setter = resource.getClass().getMethod("setResolvedIndex", int.class);
             setter.setAccessible(true);
             setter.invoke(resource, bestIndex);
-            logOnce("自动" + (autoMax ? "最高" : "最低") + "清晰度：已从 " + currentQn + " 对齐到 " + bestQn);
         } catch (Throwable ignored) {
         }
     }
@@ -182,11 +173,5 @@ final class PlayerQuality {
         } catch (NoSuchMethodException ignored) {
             return null;
         }
-    }
-
-    private static void logOnce(String message) {
-        if (message.equals(lastLogged)) return;
-        lastLogged = message;
-        HookRuntime.log(message);
     }
 }
