@@ -21,7 +21,8 @@ import java.util.List;
 
 /**
  * 日志清理：设置里点「清理日志」会写入递增的 clear_logs_at 请求值并广播给哔哩哔哩进程，
- * 模块收到广播后立即删除 Download/BiliTweaks 下的全部日志（含旧版按进程分片的文件）。
+ * 模块收到广播后立即删除 Download/BiliTweaks 下的全部日志（含旧版按进程分片的文件），
+ * 并立刻重建两个带说明行的空日志文件，内容从清理这一刻重新开始。
  * 日志文件由哔哩哔哩进程（uid）创建，只有模块跑在哔哩哔哩进程里才能静默删除，所以清理放在模块侧；
  * 已处理到的请求值记在哔哩哔哩数据目录的小文件里，避免重复清理。
  * 哔哩哔哩未运行时收不到广播，会在下次启动时按请求值补清。
@@ -152,6 +153,10 @@ final class LogCleaner {
             }
             if (value > 0) {
                 saveState(context, value);
+            }
+            // 立刻重建两个空日志文件（各带一行说明），避免清完后文件陆续冒出来像漏删
+            if (HookRuntime.isFeatureEnabled(Prefs.KEY_LOG)) {
+                LogFile.reseed();
             }
             HookRuntime.log("已按请求清理日志：删除 " + deleted + " 个文件");
             return deleted;

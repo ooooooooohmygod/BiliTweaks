@@ -16,8 +16,8 @@ android {
         applicationId "io.github.ooooooooohmygod.bilitweaks"
         minSdk 26
         targetSdk 36
-        versionCode 26
-        versionName "2.4.4"
+        versionCode 27
+        versionName "2.4.5"
     }
 
     signingConfigs {
