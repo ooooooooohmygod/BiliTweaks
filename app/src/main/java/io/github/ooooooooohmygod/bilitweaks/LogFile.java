@@ -106,6 +106,14 @@ final class LogFile {
         return sink.failures == 0;
     }
 
+    /** 定时轻量自检：上次落到备用目录的日志，尽快试着重连 Download 目录。 */
+    static void housekeeping() {
+        Sink module = moduleSink;
+        if (module != null) module.probe();
+        Sink bili = biliSink;
+        if (bili != null) bili.probe();
+    }
+
     /** 进程标签：主进程 main，其余取冒号后的名字（如 download / web）。 */
     private static String tag(String processName) {
         if (processName == null || processName.isEmpty()) return "main";
@@ -144,6 +152,8 @@ final class LogFile {
         private int badCount;
         /** 上次已经提示过「Download 写不进去，暂存应用目录」，避免刷屏。 */
         private boolean fallbackLogged;
+        /** 新建 Download 文件失败的原因只提示一次，避免刷屏。 */
+        private boolean createWarned;
 
         Sink(String fileName, String tag, long maxBytes, long keepBytes) {
             this.fileName = fileName;
@@ -230,6 +240,7 @@ final class LogFile {
                     out.write(bytes);
                     badUri = null;
                     badCount = 0;
+                    createWarned = false;
                     return;
                 } catch (Throwable t) {
                     last = t;
@@ -282,10 +293,35 @@ final class LogFile {
             try {
                 created = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
             } catch (Throwable t) {
+                warnCreate(t);
                 return null;
             }
-            if (created == null) return null;
+            if (created == null) {
+                warnCreate(new IllegalStateException("系统没有返回文件"));
+                return null;
+            }
             return settle(resolver, created);
+        }
+
+        /** 新建失败的原因写进模块日志（每个进程只写一次），方便排查。 */
+        private void warnCreate(Throwable t) {
+            if (createWarned) return;
+            createWarned = true;
+            HookRuntime.log(fileName + "：新建 Download 日志失败：" + t);
+        }
+
+        /** 定时轻量自检：上次落到备用目录时，试着重连 Download 目录（只开、关，不写内容）。 */
+        void probe() {
+            if (disabled || !fallbackLogged) return;
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return;
+            synchronized (lock) {
+                try {
+                    writeDownload(new byte[0]);
+                    fallbackLogged = false;
+                    HookRuntime.log(fileName + "：已恢复写回 Download 目录");
+                } catch (Throwable ignored) {
+                }
+            }
         }
 
         /** 并发首建时多个进程可能各建一个文件，统一收敛到同一份，删掉自己多建的空文件。 */

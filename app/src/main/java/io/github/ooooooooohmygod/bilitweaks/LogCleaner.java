@@ -106,10 +106,16 @@ final class LogCleaner {
     }
 
     private static void loop(Context context) {
+        int ticks = 0;
         while (true) {
             try {
                 Thread.sleep(POLL_INTERVAL_MS);
                 check(context);
+                // 每 4 个轮询周期（约 20 秒）做一次日志自检：落到备用目录的日志尽快回到 Download
+                if (++ticks >= 4) {
+                    ticks = 0;
+                    LogFile.housekeeping();
+                }
             } catch (InterruptedException e) {
                 return;
             } catch (Throwable ignored) {
