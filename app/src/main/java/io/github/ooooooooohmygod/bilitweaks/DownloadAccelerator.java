@@ -21,12 +21,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import io.github.libxposed.api.XposedInterface;
 
-/**
- * 离线缓存多线程下载：hook KDownloaderImpl.downloadFile（混淆名 b），对支持 Range 的单文件用 N 条并发连接
- * 分段写进引擎的临时文件，完成后依旧调用引擎原生 finishDownload（md5 校验 + 原子改名）。
- * 任一环节失败（不支持 Range、网络异常、暂停/取消、磁盘错误）都会把临时文件截断到连续前缀，
- * 再回退原生单连接逻辑，保证行为与校验语义不变。
- */
 final class DownloadAccelerator {
     private static final String IMPL_CLASS = "kntr.base.downloader.KDownloaderImpl";
     private static final String TASK_CLASS = "kntr.base.downloader.j";

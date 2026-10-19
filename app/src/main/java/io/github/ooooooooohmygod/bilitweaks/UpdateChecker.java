@@ -12,7 +12,6 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-/** 通过 Release Atom 源检查版本，并支持下载对应 APK 资产。 */
 final class UpdateChecker {
     static final String FEED_URL = "https://github.com/ooooooooohmygod/BiliTweaks/releases.atom";
     static final String RELEASES_URL = "https://github.com/ooooooooohmygod/BiliTweaks/releases";

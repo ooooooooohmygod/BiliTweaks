@@ -7,13 +7,11 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 
-/** 在播放器最终请求清晰度前，根据当前屏幕模式返回设定档位。 */
 final class PlayerQuality {
     private static volatile String lastLogged;
 
     private PlayerQuality() {}
 
-    /** 播放器最终请求清晰度（hook #18）：按当前全屏状态返回档位，自动最低/最高时取可用极值档。 */
     static int resolve(Object handler) {
         try {
             int inline = HookRuntime.getIntPreference(Prefs.KEY_INLINE_QUALITY);
@@ -46,7 +44,6 @@ final class PlayerQuality {
         }
     }
 
-    /** 卡片播放器清晰度（hook #14）：默认限制 720P，自动最低/最高时改为可用极值档。 */
     static int cardQuality(Object qualityProvider) {
         try {
             int preference = HookRuntime.getIntPreference(Prefs.KEY_INLINE_QUALITY);
@@ -63,7 +60,6 @@ final class PlayerQuality {
         }
     }
 
-    /** 解析完成后（hook #19）：选了自动最低/最高且档位不在目标极值时，把选中档位对齐过去。 */
     static void alignAuto(Object handler, Object resource) {
         try {
             if (handler == null || resource == null) return;
@@ -104,7 +100,6 @@ final class PlayerQuality {
         }
     }
 
-    /** 沿播放器容器读取"可用档位列表"（MediaResource.mVodIndex.mVodList）中的最高或最低档位。 */
     private static int boundQuality(Object container, boolean wantMax) {
         try {
             if (container == null) return 0;
@@ -132,7 +127,6 @@ final class PlayerQuality {
         }
     }
 
-    /** 读取当前屏幕方向（Configuration.ORIENTATION_*），失败返回 -1。 */
     private static int orientationOf(Object container) {
         try {
             if (container == null) return -1;
@@ -149,7 +143,6 @@ final class PlayerQuality {
         return value instanceof Integer ? (Integer) value : 0;
     }
 
-    /** 读取字段；字段不可用时回退到 getter。 */
     private static Object readProperty(Object target, String name) {
         if (target == null) return null;
         for (Class<?> current = target.getClass(); current != null; current = current.getSuperclass()) {

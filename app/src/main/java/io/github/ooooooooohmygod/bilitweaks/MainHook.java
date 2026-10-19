@@ -15,10 +15,6 @@ import java.util.function.BooleanSupplier;
 
 import io.github.libxposed.api.XposedModule;
 
-/**
- * 哔哩哔哩 9.15.0 去广告（开屏 / 暂停页 / 结束页）、去更新检测、清晰度与离线下载加速。
- * 与 BiliTweaks 的 smali 补丁点一一对应，改为在官方包上运行时 hook。
- */
 public final class MainHook extends XposedModule {
     private static final String TARGET_PACKAGE = "tv.danmaku.bili";
     private static final long TARGET_VERSION_CODE = 9150300L;
@@ -38,10 +34,8 @@ public final class MainHook extends XposedModule {
         String process = param.getProcessName();
         processName = process;
         mainProcess = TARGET_PACKAGE.equals(process);
-        // 哔哩哔哩任意子进程都要装日志镜像，所以除了主进程外只对非哔哩哔哩进程卸载
         biliProcess = process != null
                 && (process.equals(TARGET_PACKAGE) || process.startsWith(TARGET_PACKAGE + ":"));
-        // 离线缓存下载跑在 :download 进程（下载器也初始化在 :web），这两个进程只装下载加速
         downloadProcess = !mainProcess && biliProcess
                 && (process.contains("download") || process.endsWith(":web"));
         if (!biliProcess) {
@@ -100,13 +94,11 @@ public final class MainHook extends XposedModule {
             installMainHooks(classLoader, missing);
         }
 
-        // 20. 离线缓存单文件多线程下载：主进程与 :download / :web 进程都会安装
         if (mainProcess || downloadProcess) {
             int downloadInstalled = install(missing, "下载加速", () -> DownloadAccelerator.install(classLoader));
             HookRuntime.log("下载加速 hook：" + (downloadInstalled == 1 ? "已安装" : "未安装"));
         }
 
-        // 21. 哔哩哔哩日志镜像：哔哩哔哩所有进程都安装（设置里「打印日志」关掉就不装）
         if (logEnabled) {
             install(missing, "哔哩哔哩日志", () -> BiliLogMirror.install(classLoader));
         }
@@ -115,13 +107,11 @@ public final class MainHook extends XposedModule {
     private static void installMainHooks(ClassLoader classLoader, List<String> missing) {
         int installed = 0;
 
-        // 1. 暂停页总开关：关闭时放行原逻辑
         installed += install(missing, "暂停页总开关", () -> HookRuntime.hookReturnConstant(
                 method(classLoader, "com.bilibili.adcommon.config.DDConfig", "getPausePageEnable"),
                 enabled(Prefs.KEY_PAUSE_AD),
                 Boolean.FALSE));
 
-        // 2/3. 结束页广告：解码入口与兜底入口
         installed += install(missing, "结束页解码", () -> HookRuntime.hookReturnConstant(
                 method(classLoader, "com.bilibili.ship.theseus.united.page.pausedpage.PausedPageService",
                         "R", byte[].class, boolean.class),
@@ -133,7 +123,6 @@ public final class MainHook extends XposedModule {
                 enabled(Prefs.KEY_END_AD),
                 Boolean.FALSE));
 
-        // 4/5/6. 开屏三处：保留副作用，返回值置空
         installed += install(missing, "开屏订单", () -> HookRuntime.hookAfterReturnConstant(
                 method(classLoader, "tv.danmaku.bili.MainActivitySplashComponentExtKt",
                         "a", clazz(classLoader, "tv.danmaku.bili.MainActivityV2")),
@@ -150,7 +139,6 @@ public final class MainHook extends XposedModule {
                 enabled(Prefs.KEY_SPLASH_AD),
                 null));
 
-        // 7/8. 去更新检测：启动与手动检查入口
         installed += install(missing, "启动更新检查", () -> HookRuntime.hookReturnConstant(
                 method(classLoader, "tv.danmaku.bili.update.api.UpdateHelper", "checkUpdateInStartup",
                         Activity.class,
@@ -164,19 +152,16 @@ public final class MainHook extends XposedModule {
                 enabled(Prefs.KEY_UPDATE),
                 null));
 
-        // 9. 缓存的强制更新读取
         installed += install(missing, "缓存更新读取", () -> HookRuntime.hookReturnConstant(
                 method(classLoader, "qs1.g", "call"),
                 enabled(Prefs.KEY_UPDATE),
                 null));
 
-        // 10. 已下载更新包安装提示
         installed += install(missing, "更新安装提示", () -> HookRuntime.hookReturnConstant(
                 method(classLoader, "y30.l$a", "checkInstall", Context.class),
                 enabled(Prefs.KEY_UPDATE),
                 null));
 
-        // 11. 视频下方横幅广告：跳过 BannerV2Controller 的绑定（该方法本身允许返回 null）
         installed += install(missing, "视频下方横幅广告", () -> HookRuntime.hookReturnConstant(
                 method(classLoader,
                         "com.bilibili.ad.adview.videodetail.upper.banner.v2.BannerV2Controller",
@@ -191,7 +176,6 @@ public final class MainHook extends XposedModule {
                 enabled(Prefs.KEY_VIDEO_BANNER_AD),
                 null));
 
-        // 12. 开屏实时广告请求：直接返回 null，跳过网络等待
         installed += install(missing, "开屏实时广告请求", () -> HookRuntime.hookReturnConstant(
                 method(classLoader, "kntr.srcs.app.splash.services.d", "b",
                         String.class, String.class,
@@ -199,7 +183,6 @@ public final class MainHook extends XposedModule {
                 enabled(Prefs.KEY_SPLASH_AD),
                 null));
 
-        // 13. 开屏列表网络请求：直接返回 null，使用本地列表/品牌壁纸，避免壁纸前长时间等待
         installed += install(missing, "开屏列表请求", () -> HookRuntime.hookReturnConstant(
                 method(classLoader, "kntr.srcs.app.splash.services.d", "a",
                         clazz(classLoader, "kntr.srcs.app.splash.core.model.OpenEvent"),
@@ -208,25 +191,21 @@ public final class MainHook extends XposedModule {
                 enabled(Prefs.KEY_SPLASH_AD),
                 null));
 
-        // 14. 非全屏清晰度：CardPlayerQualityService 默认把卡片播放器限制在 720P，自动最低/最高时改用极值档
         installed += install(missing, "非全屏清晰度", () -> HookRuntime.hookReturnIntFrom(
                 method(classLoader, "su1.f$d", "getExpectedQuality",
                         clazz(classLoader, "tv.danmaku.biliplayerv2.service.IVideoQualityProvider$ResolveFrom")),
                 PlayerQuality::cardQuality));
 
-        // 15. 全屏默认清晰度：覆盖播放器默认清晰度设置
         installed += install(missing, "全屏清晰度", () -> HookRuntime.hookReturnIntIf(
                 method(classLoader, "com.bilibili.playerbizcommon.utils.PlayerSettingHelper",
                         "getSettingsQuality"),
                 () -> HookRuntime.getIntPreference(Prefs.KEY_FULLSCREEN_QUALITY)));
 
-        // 16. 播放器默认清晰度（getDefaultQuality 会受自动切档影响）
         installed += install(missing, "播放器默认清晰度", () -> HookRuntime.hookReturnIntIf(
                 method(classLoader, "com.bilibili.playerbizcommon.utils.PlayerSettingHelper",
                         "getDefaultQuality"),
                 () -> HookRuntime.getIntPreference(Prefs.KEY_FULLSCREEN_QUALITY)));
 
-        // 17. 选了固定档位或自动最低/最高时关闭自动清晰度，避免被自动切档覆盖
         installed += install(missing, "关闭自动清晰度", () -> HookRuntime.hookReturnConstant(
                 method(classLoader, "com.bilibili.playerbizcommon.utils.PlayerSettingHelper",
                         "isQualityAutoSwitch"),
@@ -234,12 +213,10 @@ public final class MainHook extends XposedModule {
                         || HookRuntime.getIntPreference(Prefs.KEY_FULLSCREEN_QUALITY) != 0,
                 Boolean.FALSE));
 
-        // 18. 播放器最终请求清晰度：按当前全屏状态强制档位
         installed += install(missing, "最终请求清晰度", () -> HookRuntime.hookReturnIntFrom(
                 method(classLoader, "tv.danmaku.biliplayerv2.service.VideoPlayHandler", "expectedQuality"),
                 PlayerQuality::resolve));
 
-        // 19. 自动档位对齐：解析完成后把选中档位对齐到自动最低/最高档
         installed += install(missing, "自动档位对齐", () -> HookRuntime.hookBefore(
                 method(classLoader, "tv.danmaku.biliplayerv2.service.NormalVideoPlayHandler", "d",
                         clazz(classLoader, "tv.danmaku.biliplayerv2.service.NormalVideoPlayHandler"),

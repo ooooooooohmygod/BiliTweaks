@@ -12,16 +12,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import io.github.libxposed.api.XposedInterface;
 
-/**
- * 把哔哩哔哩自己的日志镜像到 Download/BiliTweaks/BiliLog.log，各进程写同一个文件。
- *
- * 哔哩哔哩的日志出口是 BLog（tv.danmaku.android.log.BLog），所有日志最终都会进
- * an1.b 接口的某个实现：默认的 an1.j（适配器分发，可接 logcat / 文件适配器）或
- * tv.danmaku.android.log.internal.NativeLogger（libblog.so 原生写日志）。
- * 这里把这两个实现的 4 个入口都挂上，覆盖两种运行配置。
- */
 final class BiliLogMirror {
-    /** 只收 Debug 及以上（2=Verbose 丢掉，避免日志爆炸）。 */
+
     private static final int MIN_PRIORITY = 3;
     private static final int QUEUE_CAPACITY = 4096;
     private static final int BATCH_SIZE = 256;
@@ -61,13 +53,6 @@ final class BiliLogMirror {
         return count;
     }
 
-    /**
-     * an1.b 的入口：
-     * a(int, String, String, Object[])     格式化日志
-     * b(int, String, Throwable, String)    文本日志
-     * c(int, String, Throwable, Function0) 懒加载日志
-     * event(String, String)                事件日志
-     */
     private static boolean isLogEntry(Method method) {
         String name = method.getName();
         Class<?>[] types = method.getParameterTypes();

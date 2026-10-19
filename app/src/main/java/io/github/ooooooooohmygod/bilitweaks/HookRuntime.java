@@ -9,12 +9,10 @@ import java.util.function.IntSupplier;
 import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModule;
 
-/** 把回调适配到 libxposed API 102 的拦截器链。 */
 final class HookRuntime {
     private static final String TAG = "BiliTweaks";
     private static volatile XposedModule module;
 
-    /** 自定义替换器要求继续执行原方法时返回该哨兵值。 */
     static final Object PASS_THROUGH = new Object();
 
     private HookRuntime() {}
@@ -52,12 +50,10 @@ final class HookRuntime {
         LogFile.append(line.toString());
     }
 
-    /** 跳过原方法，直接返回 constant（对应 smali 的 force_false / force_void / force_null）。 */
     static XposedInterface.HookHandle hookReturnConstant(Executable executable, Object constant) {
         return hookReturnConstant(executable, () -> true, constant);
     }
 
-    /** 开关开启时跳过原方法返回 constant，关闭时正常执行原方法。 */
     static XposedInterface.HookHandle hookReturnConstant(Executable executable,
                                                         BooleanSupplier enabled,
                                                         Object constant) {
@@ -68,12 +64,10 @@ final class HookRuntime {
                 .intercept(chain -> enabled.getAsBoolean() ? constant : chain.proceed());
     }
 
-    /** 先执行原方法（保留副作用），再把返回值换成 constant（对应 smali 的 null_returns）。 */
     static XposedInterface.HookHandle hookAfterReturnConstant(Executable executable, Object constant) {
         return hookAfterReturnConstant(executable, () -> true, constant);
     }
 
-    /** 开关开启时把返回值换成 constant，关闭时保留原返回值。 */
     static XposedInterface.HookHandle hookAfterReturnConstant(Executable executable,
                                                              BooleanSupplier enabled,
                                                              Object constant) {
@@ -87,7 +81,6 @@ final class HookRuntime {
                 });
     }
 
-    /** 读取模块设置中的功能开关，默认开启；读取失败时保持原行为。 */
     static boolean isFeatureEnabled(String key) {
         XposedModule value = module;
         if (value == null) return true;
@@ -99,12 +92,10 @@ final class HookRuntime {
         }
     }
 
-    /** 读取整型偏好，0 表示不覆盖原值。 */
     static int getIntPreference(String key) {
         return getIntPreference(key, 0);
     }
 
-    /** 读取整型偏好，失败时返回默认值。 */
     static int getIntPreference(String key, int defaultValue) {
         XposedModule value = module;
         if (value == null) return defaultValue;
@@ -116,7 +107,6 @@ final class HookRuntime {
         }
     }
 
-    /** 读取长整型偏好，失败时静默返回默认值（轮询调用点，避免刷日志）。 */
     static long getLongPreference(String key, long defaultValue) {
         XposedModule value = module;
         if (value == null) return defaultValue;
@@ -127,12 +117,10 @@ final class HookRuntime {
         }
     }
 
-    /** 偏好值大于 0 时返回该值，否则执行原方法。 */
     static XposedInterface.HookHandle hookReturnIntIf(Executable executable, IntSupplier value) {
         return hookReturnIntFrom(executable, ignored -> value.getAsInt());
     }
 
-    /** 根据被拦截对象计算清晰度；结果大于 0 时覆盖原方法。 */
     static XposedInterface.HookHandle hookReturnIntFrom(Executable executable, IntResolver resolver) {
         XposedModule module = module();
         executable.setAccessible(true);
@@ -148,7 +136,6 @@ final class HookRuntime {
         int resolve(Object thisObject) throws Throwable;
     }
 
-    /** 先执行原方法，再把调用链交给回调。 */
     static XposedInterface.HookHandle hookAfter(Executable executable, AfterChain callback) {
         XposedModule value = module();
         executable.setAccessible(true);
@@ -165,7 +152,6 @@ final class HookRuntime {
         void after(XposedInterface.Chain chain) throws Throwable;
     }
 
-    /** 先执行回调（可在原方法执行前修改参数对象），再执行原方法。 */
     static XposedInterface.HookHandle hookBefore(Executable executable, BeforeChain callback) {
         XposedModule value = module();
         executable.setAccessible(true);
@@ -181,7 +167,6 @@ final class HookRuntime {
         void before(XposedInterface.Chain chain) throws Throwable;
     }
 
-    /** 完全接管原方法：回调返回 PASS_THROUGH 时执行原方法，否则把返回值作为方法结果。 */
     static XposedInterface.HookHandle hookReplace(Executable executable, Replace callback) {
         XposedModule value = module();
         executable.setAccessible(true);

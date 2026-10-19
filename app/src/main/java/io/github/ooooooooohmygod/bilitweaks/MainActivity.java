@@ -89,7 +89,6 @@ public final class MainActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
-    /** 功能卡片就是开关：点卡片本体切换，选中态由卡片描边与对勾显示。 */
     private void bindCard(int cardId, String key) {
         MaterialCardView card = findViewById(cardId);
         SharedPreferences prefs = getSharedPreferences(Prefs.NAME, MODE_PRIVATE);
@@ -99,11 +98,6 @@ public final class MainActivity extends AppCompatActivity {
         card.setOnClickListener(view -> card.toggle());
     }
 
-    /**
-     * 「清理日志」：点击后立即删除 Download/BiliTweaks 下的全部日志文件。
-     * 日志文件属哔哩哔哩 uid，App 删不了，所以直接广播给哔哩哔哩进程由模块侧删除；
-     * 哔哩哔哩未运行时收不到广播，写入的请求值会在它下次启动时补清。
-     */
     private void clearLogs() {
         SharedPreferences prefs = getSharedPreferences(Prefs.NAME, MODE_PRIVATE);
         long request = Math.max(
@@ -169,7 +163,6 @@ public final class MainActivity extends AppCompatActivity {
             }
         }
         if (!found) {
-            // 旧版本设置过的档位已下线，重置为"自动"，避免界面与实际行为不一致
             getSharedPreferences(Prefs.NAME, MODE_PRIVATE).edit().remove(key).apply();
         }
         view.setText(labels[index], false);
@@ -179,7 +172,6 @@ public final class MainActivity extends AppCompatActivity {
                         .apply());
     }
 
-    /** 下拉框前 5 项是固定档位，最后一项「自定义…」弹输入框。 */
     private static final int[] THREAD_VALUES = {
             Prefs.DOWNLOAD_THREADS_OFF, 2, 4, 6, 8
     };
@@ -205,7 +197,6 @@ public final class MainActivity extends AppCompatActivity {
                 .getInt(key, Prefs.DOWNLOAD_THREADS_DEFAULT);
         if (current != Prefs.DOWNLOAD_THREADS_OFF
                 && (current < Prefs.DOWNLOAD_THREADS_MIN || current > Prefs.DOWNLOAD_THREADS_MAX)) {
-            // 存量值不合法，重置为默认线程数
             getSharedPreferences(Prefs.NAME, MODE_PRIVATE).edit().remove(key).apply();
             current = Prefs.DOWNLOAD_THREADS_DEFAULT;
         }

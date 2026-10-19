@@ -10,26 +10,20 @@ final class Prefs {
     static final String KEY_FULLSCREEN_QUALITY = "fullscreen_quality";
     static final String KEY_UPDATE = "update";
     static final String KEY_DOWNLOAD_THREADS = "download_threads";
-    /** 日志总开关：同时控制模块日志与哔哩哔哩日志镜像（旧版两个开关已合并）。 */
+
     static final String KEY_LOG = "log";
     static final String KEY_CLEAR_LOGS = "clear_logs_at";
 
-    /** 离线下载多线程：关闭。 */
     static final int DOWNLOAD_THREADS_OFF = 0;
 
-    /** 离线下载多线程：默认线程数。 */
     static final int DOWNLOAD_THREADS_DEFAULT = 4;
 
-    /** 离线下载多线程：自定义下限。 */
     static final int DOWNLOAD_THREADS_MIN = 2;
 
-    /** 离线下载多线程：自定义上限。 */
     static final int DOWNLOAD_THREADS_MAX = 16;
 
-    /** 清晰度偏好：动态取当前视频可用的最高档。 */
     static final int AUTO_MAX_QUALITY = -1;
 
-    /** 清晰度偏好：动态取当前视频可用的最低档。 */
     static final int AUTO_MIN_QUALITY = -2;
 
     private Prefs() {}

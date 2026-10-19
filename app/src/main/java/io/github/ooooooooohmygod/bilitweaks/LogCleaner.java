@@ -9,6 +9,7 @@ import android.content.IntentFilter;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 
@@ -19,30 +20,22 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 日志清理：设置里点「清理日志」会写入递增的 clear_logs_at 请求值并广播给哔哩哔哩进程，
- * 模块收到广播后立即删除 Download/BiliTweaks 下的全部日志（含旧版按进程分片的文件），
- * 并立刻重建两个带说明行的空日志文件，内容从清理这一刻重新开始。
- * 日志文件由哔哩哔哩进程（uid）创建，只有模块跑在哔哩哔哩进程里才能静默删除，所以清理放在模块侧；
- * 已处理到的请求值记在哔哩哔哩数据目录的小文件里，避免重复清理。
- * 哔哩哔哩未运行时收不到广播，会在下次启动时按请求值补清。
- */
 final class LogCleaner {
-    /** 设置页「清理日志」发出的广播。 */
+
     static final String ACTION_CLEAR_LOGS = "io.github.ooooooooohmygod.bilitweaks.action.CLEAR_LOGS";
-    /** 广播附带的清理请求值。 */
+
     static final String EXTRA_REQUEST = "request";
-    /** 广播结果码：已清理完成。 */
+
     static final int RESULT_CLEANED = 1;
-    /** 广播结果码：清理失败。 */
+
     static final int RESULT_FAILED = 2;
 
     private static final String FOLDER = "BiliTweaks";
     private static final long POLL_INTERVAL_MS = 5000L;
     private static final int MAX_FAILED_ATTEMPTS = 3;
-    /** cleanNow 返回值：该请求此前已处理过。 */
+
     private static final int CLEAN_ALREADY = -2;
-    /** cleanNow 返回值：清理失败。 */
+
     private static final int CLEAN_FAILED = -1;
     private static final Object LOCK = new Object();
 
@@ -52,7 +45,6 @@ final class LogCleaner {
 
     private LogCleaner() {}
 
-    /** 进程启动时调用：先处理积压请求，再挂广播接收器并起轮询线程。 */
     static void start(Context context) {
         attachReceiver(context);
         try {
@@ -69,7 +61,6 @@ final class LogCleaner {
         }
     }
 
-    /** 广播接收器：设置页点击后立即清理，不必等轮询。 */
     private static void attachReceiver(Context context) {
         if (receiverAttached) return;
         synchronized (LogCleaner.class) {
@@ -111,7 +102,6 @@ final class LogCleaner {
             try {
                 Thread.sleep(POLL_INTERVAL_MS);
                 check(context);
-                // 每 4 个轮询周期（约 20 秒）做一次日志自检：落到备用目录的日志尽快回到 Download
                 if (++ticks >= 4) {
                     ticks = 0;
                     LogFile.housekeeping();
@@ -123,7 +113,6 @@ final class LogCleaner {
         }
     }
 
-    /** 轮询：哔哩哔哩未运行时点过「清理日志」的积压请求，在进程存活期间也能补清。 */
     private static void check(Context context) {
         long request = HookRuntime.getLongPreference(Prefs.KEY_CLEAR_LOGS, 0L);
         if (request <= 0) return;
@@ -141,11 +130,6 @@ final class LogCleaner {
         }
     }
 
-    /**
-     * 立即清理 Download/BiliTweaks 下的全部日志。
-     *
-     * @return 删除的文件数；{@link #CLEAN_FAILED} 表示失败；{@link #CLEAN_ALREADY} 表示该请求已处理过。
-     */
     private static int cleanNow(Context context, long request) {
         synchronized (LOCK) {
             long value = Math.max(request, HookRuntime.getLongPreference(Prefs.KEY_CLEAR_LOGS, 0L));
@@ -160,7 +144,6 @@ final class LogCleaner {
             if (value > 0) {
                 saveState(context, value);
             }
-            // 立刻重建两个空日志文件（各带一行说明），避免清完后文件陆续冒出来像漏删
             if (HookRuntime.isFeatureEnabled(Prefs.KEY_LOG)) {
                 LogFile.reseed();
             }
@@ -169,7 +152,6 @@ final class LogCleaner {
         }
     }
 
-    /** @return 删除的文件数；-1 表示有失败（请求保留，稍后重试）。 */
     private static int deleteAll(Context context) {
         int count = 0;
         boolean clean = true;
@@ -201,11 +183,15 @@ final class LogCleaner {
                 clean = false;
             }
         }
+        int ghosts = purgeHiddenRows(context);
+        if (ghosts > 0) {
+            HookRuntime.log("已清掉 " + ghosts + " 条占用文件名的系统隐藏残留记录");
+        }
         for (File dir : directDirs(context)) {
             File[] files = dir.listFiles();
             if (files == null) continue;
             for (File file : files) {
-                String name = file.getName();
+                String name = hiddenName(file.getName());
                 if (!file.isFile()) continue;
                 if (!name.startsWith("BiliTweaks") && !name.startsWith("BiliLog")) continue;
                 if (file.delete()) {
@@ -216,6 +202,57 @@ final class LogCleaner {
             }
         }
         return clean ? count : -1;
+    }
+
+    private static int purgeHiddenRows(Context context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return 0;
+        ContentResolver resolver = context.getContentResolver();
+        int deleted = purgeHiddenState(resolver, MediaStore.QUERY_ARG_MATCH_PENDING);
+        deleted += purgeHiddenState(resolver, MediaStore.QUERY_ARG_MATCH_TRASHED);
+        return deleted;
+    }
+
+    private static int purgeHiddenState(ContentResolver resolver, String matchArg) {
+        int deleted = 0;
+        try {
+            Bundle extras = new Bundle();
+            extras.putString(ContentResolver.QUERY_ARG_SQL_SELECTION,
+                    MediaStore.MediaColumns.RELATIVE_PATH + " LIKE ?");
+            extras.putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
+                    new String[]{"Download/" + FOLDER + "%"});
+            extras.putInt(matchArg, MediaStore.MATCH_ONLY);
+            try (Cursor cursor = resolver.query(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                    new String[]{MediaStore.MediaColumns._ID, MediaStore.MediaColumns.IS_PENDING,
+                            MediaStore.MediaColumns.IS_TRASHED},
+                    extras, null)) {
+                if (cursor == null) return 0;
+                while (cursor.moveToNext()) {
+                    boolean hidden = false;
+                    try {
+                        hidden = cursor.getInt(1) == 1 || cursor.getInt(2) == 1;
+                    } catch (Throwable ignored) {
+                    }
+                    if (!hidden) continue;
+                    try {
+                        deleted += resolver.delete(ContentUris.withAppendedId(
+                                MediaStore.Downloads.EXTERNAL_CONTENT_URI, cursor.getLong(0)), null, null);
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return deleted;
+    }
+
+    private static String hiddenName(String name) {
+        if (name == null) return "";
+        if (name.startsWith(".trashed-") || name.startsWith(".pending-")) {
+            int index = name.indexOf('-', name.indexOf('-') + 1);
+            if (index > 0 && index + 1 < name.length()) return name.substring(index + 1);
+        }
+        return name;
     }
 
     @SuppressWarnings("deprecation")
