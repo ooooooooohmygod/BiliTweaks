@@ -56,18 +56,19 @@ public final class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-        bindSwitch(R.id.switch_splash, Prefs.KEY_SPLASH_AD);
-        bindSwitch(R.id.switch_pause, Prefs.KEY_PAUSE_AD);
-        bindSwitch(R.id.switch_end, Prefs.KEY_END_AD);
-        bindSwitch(R.id.switch_video_banner, Prefs.KEY_VIDEO_BANNER_AD);
+        bindSwitch(R.id.switch_splash, R.id.card_splash, Prefs.KEY_SPLASH_AD);
+        bindSwitch(R.id.switch_pause, R.id.card_pause, Prefs.KEY_PAUSE_AD);
+        bindSwitch(R.id.switch_end, R.id.card_end, Prefs.KEY_END_AD);
+        bindSwitch(R.id.switch_video_banner, R.id.card_video_banner, Prefs.KEY_VIDEO_BANNER_AD);
         bindQualityDropdown(R.id.dropdown_inline_quality, Prefs.KEY_INLINE_QUALITY);
         bindQualityDropdown(R.id.dropdown_fullscreen_quality, Prefs.KEY_FULLSCREEN_QUALITY);
         bindThreadDropdown(R.id.dropdown_download_threads, Prefs.KEY_DOWNLOAD_THREADS);
-        bindSwitch(R.id.switch_update, Prefs.KEY_UPDATE);
-        bindSwitch(R.id.switch_debug_log, Prefs.KEY_DEBUG_LOG);
-        bindSwitch(R.id.switch_bili_log, Prefs.KEY_BILIBILI_LOG);
+        bindSwitch(R.id.switch_update, R.id.card_update, Prefs.KEY_UPDATE);
+        bindSwitch(R.id.switch_debug_log, R.id.card_debug_log, Prefs.KEY_DEBUG_LOG);
+        bindSwitch(R.id.switch_bili_log, R.id.card_bili_log, Prefs.KEY_BILIBILI_LOG);
 
         findViewById(R.id.button_check_update).setOnClickListener(v -> checkForUpdates(true));
+        findViewById(R.id.button_clear_logs).setOnClickListener(v -> confirmClearLogs());
 
         boolean lightBars = (getResources().getConfiguration().uiMode
                 & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
@@ -86,13 +87,33 @@ public final class MainActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
-    private void bindSwitch(int viewId, String key) {
+    private void bindSwitch(int viewId, int cardId, String key) {
         MaterialSwitch toggle = findViewById(viewId);
         toggle.setChecked(getSharedPreferences(Prefs.NAME, MODE_PRIVATE).getBoolean(key, true));
         toggle.setOnCheckedChangeListener((buttonView, isChecked) ->
                 getSharedPreferences(Prefs.NAME, MODE_PRIVATE).edit()
                         .putBoolean(key, isChecked)
                         .apply());
+        findViewById(cardId).setOnClickListener(v -> toggle.toggle());
+    }
+
+    /** 「清理日志」：写入递增的清理请求，由模块在哔哩哔哩进程里删除日志文件。 */
+    private void confirmClearLogs() {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.clear_logs)
+                .setMessage(R.string.clear_logs_confirm)
+                .setPositiveButton(R.string.confirm, (dialog, which) -> {
+                    long request = Math.max(
+                            getSharedPreferences(Prefs.NAME, MODE_PRIVATE)
+                                    .getLong(Prefs.KEY_CLEAR_LOGS, 0L) + 1L,
+                            System.currentTimeMillis());
+                    getSharedPreferences(Prefs.NAME, MODE_PRIVATE).edit()
+                            .putLong(Prefs.KEY_CLEAR_LOGS, request)
+                            .apply();
+                    Toast.makeText(this, R.string.clear_logs_requested, Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 
     private static final int[] QUALITY_VALUES = {0, Prefs.AUTO_MIN_QUALITY, Prefs.AUTO_MAX_QUALITY, 16, 32, 64, 74};

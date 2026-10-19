@@ -21,6 +21,10 @@
     <string name="thread_dialog_message">范围 2–16，越大越快，也更吃带宽和服务器连接数。</string>
     <string name="thread_dialog_confirm">确定</string>
     <string name="check_update">检查更新</string>
+    <string name="clear_logs">清理日志</string>
+    <string name="clear_logs_confirm">将清空 Download/BiliTweaks 下的全部日志文件（哔哩哔哩日志与模块日志）。哔哩哔哩运行中数秒后生效；未运行时会在下次启动哔哩哔哩后清理。</string>
+    <string name="clear_logs_requested">已请求清理日志</string>
+    <string name="confirm">确定</string>
     <string name="checking_update">正在通过 Release Atom 检查更新…</string>
     <string name="update_latest">已是最新版本</string>
     <string name="update_failed">检查更新失败，请稍后重试</string>

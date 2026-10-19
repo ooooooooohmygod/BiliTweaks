@@ -116,6 +116,17 @@ final class HookRuntime {
         }
     }
 
+    /** 读取长整型偏好，失败时静默返回默认值（轮询调用点，避免刷日志）。 */
+    static long getLongPreference(String key, long defaultValue) {
+        XposedModule value = module;
+        if (value == null) return defaultValue;
+        try {
+            return value.getRemotePreferences(Prefs.NAME).getLong(key, defaultValue);
+        } catch (Throwable t) {
+            return defaultValue;
+        }
+    }
+
     /** 偏好值大于 0 时返回该值，否则执行原方法。 */
     static XposedInterface.HookHandle hookReturnIntIf(Executable executable, IntSupplier value) {
         return hookReturnIntFrom(executable, ignored -> value.getAsInt());

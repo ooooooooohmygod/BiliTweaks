@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import io.github.libxposed.api.XposedInterface;
 
 /**
- * 把哔哩哔哩自己的日志镜像到 Download/BiliTweaks/BiliLog-&lt;进程&gt;.log。
+ * 把哔哩哔哩自己的日志镜像到 Download/BiliTweaks/BiliLog.log，各进程写同一个文件。
  *
  * 哔哩哔哩的日志出口是 BLog（tv.danmaku.android.log.BLog），所有日志最终都会进
  * an1.b 接口的某个实现：默认的 an1.j（适配器分发，可接 logcat / 文件适配器）或

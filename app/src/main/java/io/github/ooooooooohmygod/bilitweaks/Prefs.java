@@ -12,6 +12,7 @@ final class Prefs {
     static final String KEY_DOWNLOAD_THREADS = "download_threads";
     static final String KEY_DEBUG_LOG = "debug_log";
     static final String KEY_BILIBILI_LOG = "bilibili_log";
+    static final String KEY_CLEAR_LOGS = "clear_logs_at";
 
     /** 离线下载多线程：关闭。 */
     static final int DOWNLOAD_THREADS_OFF = 0;
