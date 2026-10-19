@@ -9,6 +9,19 @@ final class Prefs {
     static final String KEY_INLINE_QUALITY = "inline_quality";
     static final String KEY_FULLSCREEN_QUALITY = "fullscreen_quality";
     static final String KEY_UPDATE = "update";
+    static final String KEY_DOWNLOAD_THREADS = "download_threads";
+
+    /** 离线下载多线程：关闭。 */
+    static final int DOWNLOAD_THREADS_OFF = 0;
+
+    /** 离线下载多线程：默认线程数。 */
+    static final int DOWNLOAD_THREADS_DEFAULT = 4;
+
+    /** 离线下载多线程：自定义下限。 */
+    static final int DOWNLOAD_THREADS_MIN = 2;
+
+    /** 离线下载多线程：自定义上限。 */
+    static final int DOWNLOAD_THREADS_MAX = 16;
 
     /** 清晰度偏好：动态取当前视频可用的最高档。 */
     static final int AUTO_MAX_QUALITY = -1;

@@ -6,8 +6,11 @@ import android.content.pm.PackageInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.InputType;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -59,6 +62,7 @@ public final class MainActivity extends AppCompatActivity {
         bindSwitch(R.id.switch_video_banner, Prefs.KEY_VIDEO_BANNER_AD);
         bindQualityDropdown(R.id.dropdown_inline_quality, Prefs.KEY_INLINE_QUALITY);
         bindQualityDropdown(R.id.dropdown_fullscreen_quality, Prefs.KEY_FULLSCREEN_QUALITY);
+        bindThreadDropdown(R.id.dropdown_download_threads, Prefs.KEY_DOWNLOAD_THREADS);
         bindSwitch(R.id.switch_update, Prefs.KEY_UPDATE);
 
         findViewById(R.id.button_check_update).setOnClickListener(v -> checkForUpdates(true));
@@ -114,6 +118,86 @@ public final class MainActivity extends AppCompatActivity {
                 getSharedPreferences(Prefs.NAME, MODE_PRIVATE).edit()
                         .putInt(key, QUALITY_VALUES[position])
                         .apply());
+    }
+
+    /** 下拉框前 5 项是固定档位，最后一项「自定义…」弹输入框。 */
+    private static final int[] THREAD_VALUES = {
+            Prefs.DOWNLOAD_THREADS_OFF, 2, 4, 6, 8
+    };
+
+    private void bindThreadDropdown(int viewId, String key) {
+        MaterialAutoCompleteTextView view = findViewById(viewId);
+        refreshThreadDropdown(view, key);
+        view.setOnItemClickListener((parent, item, position, id) -> {
+            if (position >= 0 && position < THREAD_VALUES.length) {
+                getSharedPreferences(Prefs.NAME, MODE_PRIVATE).edit()
+                        .putInt(key, THREAD_VALUES[position])
+                        .apply();
+                refreshThreadDropdown(view, key);
+            } else {
+                showThreadDialog(view, key);
+            }
+        });
+    }
+
+    private void refreshThreadDropdown(MaterialAutoCompleteTextView view, String key) {
+        String[] labels = getResources().getStringArray(R.array.download_thread_options).clone();
+        int current = getSharedPreferences(Prefs.NAME, MODE_PRIVATE)
+                .getInt(key, Prefs.DOWNLOAD_THREADS_DEFAULT);
+        if (current != Prefs.DOWNLOAD_THREADS_OFF
+                && (current < Prefs.DOWNLOAD_THREADS_MIN || current > Prefs.DOWNLOAD_THREADS_MAX)) {
+            // 存量值不合法，重置为默认线程数
+            getSharedPreferences(Prefs.NAME, MODE_PRIVATE).edit().remove(key).apply();
+            current = Prefs.DOWNLOAD_THREADS_DEFAULT;
+        }
+        int index = -1;
+        for (int i = 0; i < THREAD_VALUES.length; i++) {
+            if (THREAD_VALUES[i] == current) {
+                index = i;
+                break;
+            }
+        }
+        if (index < 0) {
+            index = THREAD_VALUES.length;
+            labels[index] = getString(R.string.thread_custom_label, current);
+        }
+        view.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, labels));
+        view.setText(labels[index], false);
+    }
+
+    private void showThreadDialog(MaterialAutoCompleteTextView view, String key) {
+        int current = getSharedPreferences(Prefs.NAME, MODE_PRIVATE)
+                .getInt(key, Prefs.DOWNLOAD_THREADS_DEFAULT);
+        EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        input.setText(String.valueOf(current >= Prefs.DOWNLOAD_THREADS_MIN
+                ? current : Prefs.DOWNLOAD_THREADS_DEFAULT));
+        input.setSelection(input.getText().length());
+        float density = getResources().getDisplayMetrics().density;
+        FrameLayout container = new FrameLayout(this);
+        container.setPadding((int) (density * 20), (int) (density * 8), (int) (density * 20), 0);
+        container.addView(input, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.thread_dialog_title)
+                .setMessage(R.string.thread_dialog_message)
+                .setView(container)
+                .setPositiveButton(R.string.thread_dialog_confirm, (dialog, which) -> {
+                    int value;
+                    try {
+                        value = Integer.parseInt(input.getText().toString().trim());
+                    } catch (Throwable t) {
+                        value = Prefs.DOWNLOAD_THREADS_DEFAULT;
+                    }
+                    value = Math.max(Prefs.DOWNLOAD_THREADS_MIN,
+                            Math.min(Prefs.DOWNLOAD_THREADS_MAX, value));
+                    getSharedPreferences(Prefs.NAME, MODE_PRIVATE).edit()
+                            .putInt(key, value)
+                            .apply();
+                    refreshThreadDropdown(view, key);
+                })
+                .setNegativeButton(R.string.cancel, (dialog, which) -> refreshThreadDropdown(view, key))
+                .show();
     }
 
     private void checkForUpdates(boolean userInitiated) {

@@ -14,6 +14,9 @@ final class HookRuntime {
     private static final String TAG = "BiliTweaks";
     private static volatile XposedModule module;
 
+    /** 自定义替换器要求继续执行原方法时返回该哨兵值。 */
+    static final Object PASS_THROUGH = new Object();
+
     private HookRuntime() {}
 
     static void attach(XposedModule value) {
@@ -87,13 +90,18 @@ final class HookRuntime {
 
     /** 读取整型偏好，0 表示不覆盖原值。 */
     static int getIntPreference(String key) {
+        return getIntPreference(key, 0);
+    }
+
+    /** 读取整型偏好，失败时返回默认值。 */
+    static int getIntPreference(String key, int defaultValue) {
         XposedModule value = module;
-        if (value == null) return 0;
+        if (value == null) return defaultValue;
         try {
-            return value.getRemotePreferences(Prefs.NAME).getInt(key, 0);
+            return value.getRemotePreferences(Prefs.NAME).getInt(key, defaultValue);
         } catch (Throwable t) {
-            log("读取清晰度偏好失败：" + key, t);
-            return 0;
+            log("读取整型偏好失败：" + key, t);
+            return defaultValue;
         }
     }
 
@@ -149,6 +157,22 @@ final class HookRuntime {
 
     interface BeforeChain {
         void before(XposedInterface.Chain chain) throws Throwable;
+    }
+
+    /** 完全接管原方法：回调返回 PASS_THROUGH 时执行原方法，否则把返回值作为方法结果。 */
+    static XposedInterface.HookHandle hookReplace(Executable executable, Replace callback) {
+        XposedModule value = module();
+        executable.setAccessible(true);
+        return value.hook(executable)
+                .setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE)
+                .intercept(chain -> {
+                    Object result = callback.replace(chain);
+                    return result == PASS_THROUGH ? chain.proceed() : result;
+                });
+    }
+
+    interface Replace {
+        Object replace(XposedInterface.Chain chain) throws Throwable;
     }
 
     private static XposedModule module() {

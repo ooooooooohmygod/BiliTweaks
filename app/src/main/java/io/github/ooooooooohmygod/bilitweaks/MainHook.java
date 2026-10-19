@@ -16,8 +16,8 @@ import java.util.function.BooleanSupplier;
 import io.github.libxposed.api.XposedModule;
 
 /**
- * 哔哩哔哩 9.15.0 去广告（开屏 / 暂停页 / 结束页）与去更新检测。
- * 与 BiliTweaks 的 10 个 smali 补丁点一一对应，改为在官方包上运行时 hook。
+ * 哔哩哔哩 9.15.0 去广告（开屏 / 暂停页 / 结束页）、去更新检测、清晰度与离线下载加速。
+ * 与 BiliTweaks 的 smali 补丁点一一对应，改为在官方包上运行时 hook。
  */
 public final class MainHook extends XposedModule {
     private static final String TARGET_PACKAGE = "tv.danmaku.bili";
@@ -28,19 +28,24 @@ public final class MainHook extends XposedModule {
     private static final AtomicBoolean INSTALLED = new AtomicBoolean(false);
 
     private boolean mainProcess;
+    private boolean downloadProcess;
 
     @Override
     public void onModuleLoaded(ModuleLoadedParam param) {
         HookRuntime.attach(this);
-        mainProcess = TARGET_PACKAGE.equals(param.getProcessName());
-        if (!mainProcess) {
+        String process = param.getProcessName();
+        mainProcess = TARGET_PACKAGE.equals(process);
+        // 离线缓存下载跑在 :download 进程（下载器也初始化在 :web），这两个进程只装下载加速
+        downloadProcess = !mainProcess && process != null && process.startsWith(TARGET_PACKAGE)
+                && (process.contains("download") || process.endsWith(":web"));
+        if (!mainProcess && !downloadProcess) {
             detach();
         }
     }
 
     @Override
     public void onPackageReady(PackageReadyParam param) {
-        if (!mainProcess
+        if ((!mainProcess && !downloadProcess)
                 || !TARGET_PACKAGE.equals(param.getPackageName())
                 || !param.isFirstPackage()
                 || !ATTACH_HOOKED.compareAndSet(false, true)) {
@@ -79,8 +84,18 @@ public final class MainHook extends XposedModule {
         return false;
     }
 
-    private static void installHooks(ClassLoader classLoader) {
+    private void installHooks(ClassLoader classLoader) {
         List<String> missing = new ArrayList<>();
+        if (mainProcess) {
+            installMainHooks(classLoader, missing);
+        }
+
+        // 20. 离线缓存单文件多线程下载：主进程与 :download / :web 进程都会安装
+        int downloadInstalled = install(missing, "下载加速", () -> DownloadAccelerator.install(classLoader));
+        HookRuntime.log("下载加速 hook：" + (downloadInstalled == 1 ? "已安装" : "未安装"));
+    }
+
+    private static void installMainHooks(ClassLoader classLoader, List<String> missing) {
         int installed = 0;
 
         // 1. 暂停页总开关：关闭时放行原逻辑

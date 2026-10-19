@@ -11,6 +11,13 @@
     <string name="section_quality">清晰度</string>
     <string name="quality_inline">非全屏清晰度</string>
     <string name="quality_fullscreen">全屏默认清晰度</string>
+    <string name="section_download">下载加速</string>
+    <string name="download_threads">离线缓存线程数</string>
+    <string name="download_threads_hint">仅对离线缓存生效；大于 2MB 的文件按所选线程数分段并发下载，失败自动回退单连接。设置对后续开始的下载生效。</string>
+    <string name="thread_custom_label">自定义（%1$d 线程）</string>
+    <string name="thread_dialog_title">自定义线程数</string>
+    <string name="thread_dialog_message">范围 2–16，越大越快，也更吃带宽和服务器连接数。</string>
+    <string name="thread_dialog_confirm">确定</string>
     <string name="ui_hint">修改后对后续触发生效；开屏广告与更新检测建议重启哔哩哔哩后验证。</string>
     <string name="check_update">检查更新</string>
     <string name="checking_update">正在通过 Release Atom 检查更新…</string>
