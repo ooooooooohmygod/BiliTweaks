@@ -121,7 +121,8 @@ final class LogFile {
     /**
      * 一个落盘目标：一个文件，只追加不滚动；文件被清理或写失败时，下次写入自动重找/重建。
      * 哔哩哔哩各进程可能同时重建日志文件（各建一份重名文件），写入过程中会周期性收敛到同一份、
-     * 删掉多出来的重名文件；超过上限时自动裁掉较早内容。
+     * 删掉多出来的重名文件；超过上限时自动裁掉较早内容。系统偶尔会留下「查得到、写不进」的
+     * 失效记录，同一个文件连续失败几次后会被删掉重建，保证日志始终有地方写。
      */
     static final class Sink {
         private final String fileName;
@@ -138,6 +139,11 @@ final class LogFile {
         private int failures;
         private long pendingBytes;
         private long lastCheckAt;
+        /** 最近一个「能查到但写不进去」的文件（例如系统留下的失效记录），连续失败就清掉它。 */
+        private Uri badUri;
+        private int badCount;
+        /** 上次已经提示过「Download 写不进去，暂存应用目录」，避免刷屏。 */
+        private boolean fallbackLogged;
 
         Sink(String fileName, String tag, long maxBytes, long keepBytes) {
             this.fileName = fileName;
@@ -177,8 +183,13 @@ final class LogFile {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 try {
                     writeDownload(bytes);
+                    fallbackLogged = false;
                     return;
                 } catch (Throwable ignored) {
+                    if (!fallbackLogged) {
+                        fallbackLogged = true;
+                        HookRuntime.log(fileName + "：Download 目录暂时写不进去，日志先存到应用目录");
+                    }
                 }
             }
             FileOutputStream out = new FileOutputStream(directFile(), true);
@@ -211,14 +222,18 @@ final class LogFile {
                     last = t;
                 }
                 if (out == null) {
+                    noteBad(resolver, mediaUri);
                     mediaUri = null;
                     continue;
                 }
                 try {
                     out.write(bytes);
+                    badUri = null;
+                    badCount = 0;
                     return;
                 } catch (Throwable t) {
                     last = t;
+                    noteBad(resolver, mediaUri);
                     mediaUri = null;
                 } finally {
                     try {
@@ -228,6 +243,28 @@ final class LogFile {
                 }
             }
             throw last != null ? new Exception(last) : new Exception("无法写入 Download 日志");
+        }
+
+        /**
+         * 同一个文件连续 3 次写不进去，就删掉它的记录、下次写入重新建一个。
+         * 系统删除文件时偶尔会留下「有记录没文件」的残局，删掉记录才能恢复正常记录日志。
+         */
+        private void noteBad(ContentResolver resolver, Uri uri) {
+            if (uri == null) return;
+            if (uri.equals(badUri)) {
+                badCount++;
+            } else {
+                badUri = uri;
+                badCount = 1;
+            }
+            if (badCount < 3) return;
+            badUri = null;
+            badCount = 0;
+            try {
+                resolver.delete(uri, null, null);
+                HookRuntime.log(fileName + "：清理了一条失效的日志记录，稍后自动重建");
+            } catch (Throwable ignored) {
+            }
         }
 
         private Uri findExisting(ContentResolver resolver) {
